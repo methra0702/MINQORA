@@ -1,195 +1,675 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 
-const API_URL = "http://127.0.0.1:8000";
+const DATA_API = "http://127.0.0.1:8000";
 
-export default function MiningData() {
+const firstValue = (...values) => {
+  for (const value of values) {
+    if (
+      value !== undefined &&
+      value !== null &&
+      String(value).trim() !== "" &&
+      String(value).trim().toLowerCase() !== "nan"
+    ) {
+      return value;
+    }
+  }
+  return "";
+};
+
+const numberValue = (...values) => {
+  const value = firstValue(...values);
+
+  if (value === "") return null;
+
+  const cleaned = String(value)
+    .replace(/,/g, "")
+    .replace(/%/g, "")
+    .trim();
+
+  const number = Number(cleaned);
+
+  return Number.isFinite(number) ? number : null;
+};
+
+const getRawValue = (record, ...keys) => {
+  const raw = record?.raw_fields;
+
+  if (!raw || typeof raw !== "object") return "";
+
+  for (const key of keys) {
+    if (
+      raw[key] !== undefined &&
+      raw[key] !== null &&
+      String(raw[key]).trim() !== ""
+    ) {
+      return raw[key];
+    }
+  }
+
+  // Fuzzy key matching
+  const normalizedKeys = Object.keys(raw);
+
+  for (const wanted of keys) {
+    const wantedClean = wanted
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, "");
+
+    const foundKey = normalizedKeys.find((key) => {
+      const clean = key.toLowerCase().replace(/[^a-z0-9]/g, "");
+      return clean === wantedClean || clean.includes(wantedClean);
+    });
+
+    if (foundKey && raw[foundKey] !== undefined && raw[foundKey] !== null) {
+      return raw[foundKey];
+    }
+  }
+
+  return "";
+};
+
+const normalizeRecord = (record = {}, index = 0) => {
+  const rawMine = getRawValue(
+    record,
+    "mine",
+    "mine_name",
+    "mine name",
+    "colliery",
+    "colliery_name"
+  );
+
+  const rawSeam = getRawValue(
+    record,
+    "seam",
+    "seam_name",
+    "seam name",
+    "coal_seam"
+  );
+
+  const rawThickness = getRawValue(
+    record,
+    "thickness",
+    "thickness_m",
+    "seam_thickness",
+    "seam thickness"
+  );
+
+  const rawDepth = getRawValue(
+    record,
+    "depth",
+    "depth_m",
+    "mining_depth",
+    "depth from surface"
+  );
+
+  const rawProduction = getRawValue(
+    record,
+    "production",
+    "production_tonnes",
+    "output",
+    "production tonnes",
+    "production (tonnes)"
+  );
+
+  const rawRecovery = getRawValue(
+    record,
+    "recovery",
+    "recovery_pct",
+    "recovery_percent",
+    "recovery factor"
+  );
+
+  const rawAsh = getRawValue(
+    record,
+    "ash",
+    "ash_content",
+    "ash_pct",
+    "ash_percent",
+    "ash content"
+  );
+
+  const rawMoisture = getRawValue(
+    record,
+    "moisture",
+    "moisture_pct",
+    "moisture_percent"
+  );
+
+  const rawYear = getRawValue(
+    record,
+    "year",
+    "date",
+    "financial_year",
+    "year of reporting"
+  );
+
+  const mine = firstValue(
+    record.mine_name,
+    record.mine,
+    record.mineName,
+    rawMine
+  );
+
+  const seam = firstValue(
+    record.seam,
+    record.seam_name,
+    record.seamName,
+    rawSeam
+  );
+
+  const sourceUrl = firstValue(
+    record.source_url,
+    record.sourceUrl,
+    record.url
+  );
+
+  const sourceChapter = firstValue(
+    record.source_chapter,
+    record.chapter
+  );
+
+  const sourceSheet = firstValue(
+    record.source_sheet,
+    record.sheet,
+    record.table_title
+  );
+
+  // Official-source detection
+  const sourceText = `${sourceUrl} ${record.source || ""} ${sourceChapter || ""} ${sourceSheet || ""}`.toLowerCase();
+
+  const isOfficial =
+    sourceText.includes("coal.gov.in") ||
+    sourceText.includes("coal directory") ||
+    sourceText.includes("ministry of coal") ||
+    sourceText.includes("government");
+
+  return {
+    ...record,
+
+    id: firstValue(
+      record.id,
+      record.record_id,
+      index + 1
+    ),
+
+    date: firstValue(
+      record.date,
+      record.record_date,
+      record.year,
+      rawYear
+    ),
+
+    mine_name:
+      mine ||
+      firstValue(
+        record.state,
+        record.company,
+        "Official Coal Record"
+      ),
+
+    seam:
+      seam ||
+      firstValue(
+        record.table_title,
+        record.source_sheet,
+        record.record_type,
+        "Official Record"
+      ),
+
+    thickness: numberValue(
+      record.thickness,
+      record.thickness_m,
+      record.seam_thickness,
+      rawThickness
+    ),
+
+    depth: numberValue(
+      record.depth,
+      record.depth_m,
+      record.mining_depth,
+      rawDepth
+    ),
+
+    production: numberValue(
+      record.production,
+      record.production_tonnes,
+      record.output,
+      rawProduction
+    ),
+
+    recovery: numberValue(
+      record.recovery,
+      record.recovery_pct,
+      record.recovery_percent,
+      record.recovery_factor,
+      rawRecovery
+    ),
+
+    ash_content: numberValue(
+      record.ash_content,
+      record.ash,
+      record.ash_pct,
+      record.ash_percent,
+      rawAsh
+    ),
+
+    moisture: numberValue(
+      record.moisture,
+      record.moisture_pct,
+      record.moisture_percent,
+      rawMoisture
+    ),
+
+    risk_level: firstValue(
+      record.risk_level,
+      record.risk
+    ) || null,
+
+    source_url: sourceUrl,
+    source_chapter: sourceChapter,
+    source_sheet: sourceSheet,
+
+    // Correct provenance classification
+    data_status: isOfficial ? "REAL_SOURCE" : "DEMONSTRATION",
+  };
+};
+
+const display = (value, suffix = "") => {
+  if (
+    value === null ||
+    value === undefined ||
+    value === ""
+  ) {
+    return "N/A";
+  }
+
+  return `${value}${suffix}`;
+};
+
+function MiningData() {
+  const [allRecords, setAllRecords] = useState([]);
   const [records, setRecords] = useState([]);
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   const [page, setPage] = useState(1);
-
-  const [pagination, setPagination] = useState({
-    page: 1,
-    total: 0,
-    total_pages: 1,
-  });
+  const [pageSize] = useState(25);
 
   const [dateFilter, setDateFilter] = useState("");
   const [mineFilter, setMineFilter] = useState("");
   const [seamFilter, setSeamFilter] = useState("");
   const [riskFilter, setRiskFilter] = useState("");
 
-  const loadMiningData = async (
-    requestedPage = 1,
-    filters = {
-      date: dateFilter,
-      mine: mineFilter,
-      seam: seamFilter,
-      risk: riskFilter,
-    }
-  ) => {
+  // ------------------------------------------------------------
+  // LOAD OFFICIAL DATA
+  // ------------------------------------------------------------
+
+  const loadData = async () => {
     setLoading(true);
     setError("");
 
     try {
-      const params = new URLSearchParams({
-        page: requestedPage,
-        limit: 25,
-      });
-
-      if (filters.date) {
-        params.append("date", filters.date);
-      }
-
-      if (filters.mine) {
-        params.append("mine_name", filters.mine);
-      }
-
-      if (filters.seam) {
-        params.append("seam", filters.seam);
-      }
-
-      if (filters.risk) {
-        params.append("risk_level", filters.risk);
-      }
-
       const response = await fetch(
-        `${API_URL}/mining-data?${params.toString()}`
+        `${DATA_API}/mining-data`
       );
 
       if (!response.ok) {
-        throw new Error("Could not load mining data.");
+        throw new Error(
+          `Mining data request failed (${response.status}).`
+        );
       }
 
       const data = await response.json();
 
-      setRecords(data.records || []);
+      const sourceRecords = Array.isArray(data.records)
+        ? data.records
+        : [];
 
-      setPagination(
-        data.pagination || {
-          page: requestedPage,
-          total: 0,
-          total_pages: 1,
-        }
+      const normalizedRecords = sourceRecords
+        .slice(0, 1000)
+        .map((record, index) =>
+          normalizeRecord(record, index)
+        );
+
+      setAllRecords(normalizedRecords);
+      setPage(1);
+
+    } catch (err) {
+      console.error(err);
+
+      setError(
+        err.message ||
+        "Could not load mining data."
       );
 
-      setPage(requestedPage);
-    } catch (err) {
-      setError(err.message);
+      setAllRecords([]);
       setRecords([]);
+
     } finally {
       setLoading(false);
     }
   };
 
+  // Load once
   useEffect(() => {
-    loadMiningData(1);
+    loadData();
   }, []);
 
-  const applyFilters = () => {
-    loadMiningData(1);
-  };
+  // ------------------------------------------------------------
+  // FILTER DATA
+  // ------------------------------------------------------------
+
+  const filteredRecords = useMemo(() => {
+    return allRecords.filter((record) => {
+
+      // Date / year
+      if (dateFilter) {
+        const searchDate = dateFilter
+          .toLowerCase()
+          .trim();
+
+        const recordDate = String(
+          record.date || ""
+        )
+          .toLowerCase()
+          .trim();
+
+        if (!recordDate.includes(searchDate)) {
+          return false;
+        }
+      }
+
+      // Mine
+      if (mineFilter) {
+        const mine = String(
+          record.mine_name || ""
+        ).toLowerCase();
+
+        if (!mine.includes(mineFilter.toLowerCase())) {
+          return false;
+        }
+      }
+
+      // Seam
+      if (seamFilter) {
+        const seam = String(
+          record.seam || ""
+        ).toLowerCase();
+
+        if (!seam.includes(seamFilter.toLowerCase())) {
+          return false;
+        }
+      }
+
+      // Risk
+      if (riskFilter) {
+        const risk = String(
+          record.risk_level || ""
+        ).toUpperCase();
+
+        if (risk !== riskFilter.toUpperCase()) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }, [
+    allRecords,
+    dateFilter,
+    mineFilter,
+    seamFilter,
+    riskFilter
+  ]);
+
+  // ------------------------------------------------------------
+  // PAGINATION
+  // ------------------------------------------------------------
+
+  const totalPages = Math.max(
+    1,
+    Math.ceil(
+      filteredRecords.length / pageSize
+    )
+  );
+
+  const paginatedRecords = useMemo(() => {
+    const start =
+      (page - 1) * pageSize;
+
+    return filteredRecords.slice(
+      start,
+      start + pageSize
+    );
+  }, [
+    filteredRecords,
+    page,
+    pageSize
+  ]);
+
+  // Keep page valid after filtering
+  useEffect(() => {
+    if (page > totalPages) {
+      setPage(totalPages);
+    }
+  }, [page, totalPages]);
+
+  // ------------------------------------------------------------
+  // SUMMARY
+  // ------------------------------------------------------------
+
+  const mines = useMemo(() => {
+    return [
+      ...new Set(
+        filteredRecords
+          .map((r) => r.mine_name)
+          .filter(Boolean)
+      )
+    ];
+  }, [filteredRecords]);
+
+  const sourceCounts = useMemo(() => ({
+    real: allRecords.filter(
+      (r) =>
+        r.data_status === "REAL_SOURCE"
+    ).length,
+
+    demo: allRecords.filter(
+      (r) =>
+        r.data_status === "DEMONSTRATION"
+    ).length,
+
+  }), [allRecords]);
+
+  // ------------------------------------------------------------
+  // FILTER CONTROLS
+  // ------------------------------------------------------------
 
   const clearFilters = () => {
-    const emptyFilters = {
-      date: "",
-      mine: "",
-      seam: "",
-      risk: "",
-    };
-
     setDateFilter("");
     setMineFilter("");
     setSeamFilter("");
     setRiskFilter("");
-
-    loadMiningData(1, emptyFilters);
+    setPage(1);
   };
 
-  const deleteRecord = async (id) => {
-    const confirmed = window.confirm(
-      "Delete this mining record?"
-    );
+  const handleSearch = () => {
+    setPage(1);
+  };
 
-    if (!confirmed) return;
+  // ------------------------------------------------------------
+  // SOURCE LABEL
+  // ------------------------------------------------------------
 
-    try {
-      const response = await fetch(
-        `${API_URL}/mining-data/${id}`,
-        {
-          method: "DELETE",
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error("Could not delete record.");
-      }
-
-      loadMiningData(page);
-    } catch (err) {
-      alert(err.message);
+  const sourceLabel = (record) => {
+    if (
+      record.data_status ===
+      "REAL_SOURCE"
+    ) {
+      return "OFFICIAL";
     }
+
+    return "DEMO";
   };
 
-  const refreshData = () => {
-    loadMiningData(page);
-  };
+  // ------------------------------------------------------------
+  // UI
+  // ------------------------------------------------------------
 
   return (
     <div className="page">
-      <div className="page-heading">
-        <div>
-          <p className="eyebrow">DATA CENTER</p>
 
-          <h1>Mining Data</h1>
+      {/* HEADER */}
+
+      <div className="page-heading">
+
+        <div>
+
+          <p className="eyebrow">
+            DATA CENTER
+          </p>
+
+          <h1>
+            Mining Data
+          </h1>
 
           <p className="page-description">
-            Historical and operational mining records
-            used by MINQORA Brain 1.
+            Official coal and mining records used
+            across MINQORA intelligence modules.
           </p>
+
         </div>
 
         <button
           className="primary-button"
-          onClick={refreshData}
+          onClick={loadData}
+          disabled={loading}
         >
-          Refresh Data
+          {loading
+            ? "Loading..."
+            : "Refresh Data"}
         </button>
+
       </div>
 
+
+      {/* SUMMARY */}
+
+      <div
+        className="data-summary-grid"
+        style={{ marginBottom: 24 }}
+      >
+
+        <div className="summary-card">
+
+          <span>
+            OFFICIAL SOURCE RECORDS
+          </span>
+
+          <strong>
+            {sourceCounts.real}
+          </strong>
+
+          <small>
+            Ministry of Coal / government source-backed records
+          </small>
+
+        </div>
+
+
+        <div className="summary-card">
+
+          <span>
+            DEMONSTRATION RECORDS
+          </span>
+
+          <strong>
+            {sourceCounts.demo}
+          </strong>
+
+          <small>
+            Prototype records, if any
+          </small>
+
+        </div>
+
+
+        <div className="summary-card">
+
+          <span>
+            TOTAL RECORDS
+          </span>
+
+          <strong>
+            {allRecords.length}
+          </strong>
+
+          <small>
+            Official records loaded into MINQORA
+          </small>
+
+        </div>
+
+
+        <div className="summary-card">
+
+          <span>
+            MINES / SOURCES ON PAGE
+          </span>
+
+          <strong>
+            {mines.length}
+          </strong>
+
+          <small>
+            Current filtered dataset
+          </small>
+
+        </div>
+
+      </div>
+
+
+      {/* FILTERS */}
+
       <section className="filters-panel">
+
         <input
-          type="date"
+          type="text"
+          placeholder="Year / Date"
           value={dateFilter}
-          onChange={(event) =>
-            setDateFilter(event.target.value)
-          }
+          onChange={(e) => {
+            setDateFilter(e.target.value);
+            setPage(1);
+          }}
         />
 
         <input
           type="text"
           placeholder="Search mine"
           value={mineFilter}
-          onChange={(event) =>
-            setMineFilter(event.target.value)
-          }
+          onChange={(e) => {
+            setMineFilter(e.target.value);
+            setPage(1);
+          }}
         />
 
         <input
           type="text"
           placeholder="Search seam"
           value={seamFilter}
-          onChange={(event) =>
-            setSeamFilter(event.target.value)
-          }
+          onChange={(e) => {
+            setSeamFilter(e.target.value);
+            setPage(1);
+          }}
         />
 
         <select
           value={riskFilter}
-          onChange={(event) =>
-            setRiskFilter(event.target.value)
-          }
+          onChange={(e) => {
+            setRiskFilter(e.target.value);
+            setPage(1);
+          }}
         >
           <option value="">
             All Risk Levels
@@ -206,11 +686,12 @@ export default function MiningData() {
           <option value="HIGH">
             HIGH
           </option>
+
         </select>
 
         <button
           className="primary-button"
-          onClick={applyFilters}
+          onClick={handleSearch}
         >
           Search
         </button>
@@ -221,7 +702,11 @@ export default function MiningData() {
         >
           Clear
         </button>
+
       </section>
+
+
+      {/* ERROR */}
 
       {error && (
         <div className="error-message">
@@ -229,14 +714,23 @@ export default function MiningData() {
         </div>
       )}
 
+
+      {/* TABLE */}
+
       <section className="data-table-container">
+
         {loading ? (
+
           <div className="loading-state">
-            Loading mining records...
+            Loading official mining records...
           </div>
+
         ) : (
+
           <table className="mining-table">
+
             <thead>
+
               <tr>
                 <th>ID</th>
                 <th>Date</th>
@@ -248,118 +742,197 @@ export default function MiningData() {
                 <th>Recovery</th>
                 <th>Ash</th>
                 <th>Risk</th>
-                <th>Action</th>
+                <th>Source</th>
               </tr>
+
             </thead>
 
+
             <tbody>
-              {records.length === 0 ? (
+
+              {paginatedRecords.length === 0 ? (
+
                 <tr>
+
                   <td
                     colSpan="11"
                     className="empty-table"
                   >
                     No mining records found.
                   </td>
+
                 </tr>
+
               ) : (
-                records.map((record) => (
-                  <tr key={record.id}>
-                    <td>{record.id}</td>
 
-                    <td>{record.date}</td>
+                paginatedRecords.map(
+                  (record, index) => (
 
-                    <td>{record.mine_name}</td>
+                    <tr
+                      key={`${record.id}-${index}`}
+                    >
 
-                    <td>{record.seam}</td>
+                      <td>
+                        {record.id}
+                      </td>
 
-                    <td>
-                      {Number(
-                        record.thickness || 0
-                      ).toFixed(2)}
-                    </td>
+                      <td>
+                        {display(record.date)}
+                      </td>
 
-                    <td>
-                      {Number(
-                        record.depth || 0
-                      ).toFixed(2)}
-                    </td>
+                      <td>
+                        {display(record.mine_name)}
+                      </td>
 
-                    <td>
-                      {Number(
-                        record.production || 0
-                      ).toLocaleString()}
-                    </td>
+                      <td>
+                        {display(record.seam)}
+                      </td>
 
-                    <td>
-                      {Number(
-                        record.recovery || 0
-                      ).toFixed(2)}
-                      %
-                    </td>
+                      <td>
+                        {display(record.thickness)}
+                      </td>
 
-                    <td>
-                      {Number(
-                        record.ash_content || 0
-                      ).toFixed(2)}
-                      %
-                    </td>
+                      <td>
+                        {display(record.depth)}
+                      </td>
 
-                    <td>
-                      <span
-                        className={`risk-badge ${String(
-                          record.risk_level || ""
-                        ).toLowerCase()}`}
-                      >
-                        {record.risk_level}
-                      </span>
-                    </td>
+                      <td>
+                        {display(record.production)}
+                      </td>
 
-                    <td>
-                      <button
-                        className="remove-button"
-                        onClick={() =>
-                          deleteRecord(record.id)
-                        }
-                      >
-                        Delete
-                      </button>
-                    </td>
-                  </tr>
-                ))
+                      <td>
+                        {display(
+                          record.recovery,
+                          "%"
+                        )}
+                      </td>
+
+                      <td>
+                        {display(
+                          record.ash_content,
+                          "%"
+                        )}
+                      </td>
+
+                      <td>
+
+                        <span
+                          className={`risk-badge ${
+                            String(
+                              record.risk_level ||
+                              "unknown"
+                            ).toLowerCase()
+                          }`}
+                        >
+                          {display(
+                            record.risk_level
+                          )}
+                        </span>
+
+                      </td>
+
+                      <td>
+
+                        <span
+                          className={`risk-badge ${
+                            record.data_status ===
+                            "REAL_SOURCE"
+                              ? "low"
+                              : "medium"
+                          }`}
+                        >
+                          {sourceLabel(record)}
+                        </span>
+
+                        {record.source_chapter && (
+                          <div
+                            style={{
+                              marginTop: 5,
+                              fontSize: 10,
+                              opacity: 0.65
+                            }}
+                          >
+                            Chapter{" "}
+                            {record.source_chapter}
+                          </div>
+                        )}
+
+                      </td>
+
+                    </tr>
+
+                  )
+                )
+
               )}
+
             </tbody>
+
           </table>
+
         )}
+
       </section>
 
+
+      {/* PROVENANCE */}
+
+      <div
+        className="data-provenance-note"
+        style={{
+          marginTop: 14,
+          fontSize: 12,
+          opacity: 0.8
+        }}
+      >
+
+        <strong>
+          Data provenance:
+        </strong>{" "}
+
+        Records marked{" "}
+        <strong>OFFICIAL</strong>{" "}
+        are loaded from the official Ministry
+        of Coal Coal Directory source package.
+        MINQORA does not fabricate missing
+        geological or mining values; unavailable
+        fields are displayed as N/A.
+
+      </div>
+
+
+      {/* PAGINATION */}
+
       <div className="pagination">
+
         <button
           disabled={page <= 1}
           onClick={() =>
-            loadMiningData(page - 1)
+            setPage((p) => p - 1)
           }
         >
           Previous
         </button>
 
         <span>
-          Page {pagination.page || page} of{" "}
-          {pagination.total_pages || 1}
+          Page {page} of {totalPages}
+          {" "}•{" "}
+          {filteredRecords.length} records
         </span>
 
         <button
-          disabled={
-            page >=
-            (pagination.total_pages || 1)
-          }
+          disabled={page >= totalPages}
           onClick={() =>
-            loadMiningData(page + 1)
+            setPage((p) => p + 1)
           }
         >
           Next
         </button>
+
       </div>
+
     </div>
   );
 }
+
+export default MiningData;

@@ -1,0 +1,51 @@
+{
+  "block_name": "Machhakata (Revised)",
+
+  "spatial_data_status": {
+    "boundary_survey": "available",
+    "boundary_coordinates": "not_publicly_obtained",
+    "dtm": "not_publicly_obtained",
+    "dem": "not_publicly_obtained"
+  },
+
+  "boundary_survey": {
+    "method": "DGPS",
+    "purpose": "Finalization of block boundary coordinates and preparation of final block boundary plan",
+    "organization": "Central Mine Planning & Design Institute Limited (CMPDI)",
+    "client": "NLC India Limited",
+    "status": "survey_confirmed",
+    "source": "CMPDI Annual Report 2024-25"
+  },
+
+  "coordinates": {
+    "available": false,
+    "note": "The actual DGPS coordinate dataset has not been publicly obtained. No coordinates are invented by MINQORA."
+  },
+
+  "terrain_model": {
+    "dtm_available": false,
+    "dem_available": false,
+    "note": "No publicly downloadable CMPDI Machhakata DTM/DEM has been verified yet."
+  },
+
+  "future_spatial_inputs": [
+    "DGPS block-boundary coordinates",
+    "Boundary polygon",
+    "Digital Elevation Model",
+    "Digital Terrain Model",
+    "Topographical contours",
+    "Satellite imagery",
+    "GIS layers"
+  ],
+
+  "data_quality": {
+    "classification": "partially_available",
+    "note": "CMPDI confirms the boundary survey activity, but the underlying coordinate/terrain files are not included here."
+  },
+
+  "source": {
+    "organization": "Central Mine Planning & Design Institute Limited (CMPDI)",
+    "document": "Annual Report & Accounts 2024-25",
+    "url": "https://www.cmpdi.co.in/sites/default/files/2026-03/CMPDIL_Annual_Report_2024-25.pdf"
+  }
+}

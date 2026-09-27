@@ -1,131 +1,75 @@
 import { useEffect, useMemo, useState } from "react";
 
-const API_URL = "http://127.0.0.1:8000";
+const API_URL = "http://127.0.0.1:8002";
 
-function number(value) {
+function safeNumber(value) {
   if (value === null || value === undefined || value === "") return null;
   const n = Number(String(value).replace(/,/g, ""));
   return Number.isFinite(n) ? n : null;
 }
 
-function normalizeRecord(record) {
-  const recoveryFactorRaw =
-    record.recovery_factor ??
-    record.recovery_factor_pct ??
-    record.recoveryFactor;
-
-  let recoveryFactor = number(recoveryFactorRaw);
-  if (recoveryFactor !== null && recoveryFactor > 1) {
-    recoveryFactor = recoveryFactor / 100;
-  }
-
-  let areaM2 = number(
-    record.area_m2 ??
-      record.seam_area_m2 ??
-      record.resource_area_m2 ??
-      record.area
-  );
-
-  const areaHa = number(record.area_ha ?? record.area_hectares);
-  if (areaM2 === null && areaHa !== null) {
-    areaM2 = areaHa * 10000;
-  }
-
-  const length = number(record.length_m ?? record.seam_length_m);
-  const width = number(record.width_m ?? record.seam_width_m);
-  if (areaM2 === null && length !== null && width !== null) {
-    areaM2 = length * width;
-  }
-
-  const thickness = number(
-    record.thickness ?? record.thickness_m ?? record.seam_thickness
-  );
-  const density = number(
-    record.density_t_m3 ?? record.coal_density ?? record.density
-  );
-
-  let inSitu = null;
-  let recoverable = null;
-
-  if (
-    areaM2 !== null &&
-    thickness !== null &&
-    density !== null &&
-    areaM2 >= 0 &&
-    thickness >= 0 &&
-    density >= 0
-  ) {
-    inSitu = areaM2 * thickness * density;
-    if (recoveryFactor !== null && recoveryFactor >= 0) {
-      recoverable = inSitu * recoveryFactor;
-    }
-  }
-
-  return {
-    ...record,
-    id: record.id,
-    date: record.date || record.record_date || record.year || "",
-    mine:
-      record.mine ||
-      record.mine_name ||
-      record.mineName ||
-      "Unknown",
-    seam:
-      record.seam ||
-      record.seam_name ||
-      record.seamName ||
-      "Unknown",
-    thickness,
-    depth: number(record.depth ?? record.depth_m ?? record.mining_depth),
-    production: number(
-      record.production ??
-        record.production_tonnes ??
-        record.output
-    ),
-    recovery: number(
-      record.recovery ??
-        record.recovery_pct ??
-        record.recovery_percent
-    ),
-    ash: number(
-      record.ash ??
-        record.ash_content ??
-        record.ash_pct ??
-        record.ash_percent
-    ),
-    moisture: number(
-      record.moisture ??
-        record.moisture_pct ??
-        record.moisture_percent
-    ),
-    risk: String(
-      record.risk_level || record.risk || "NOT_AVAILABLE"
-    ).toUpperCase(),
-    areaM2,
-    density,
-    recoveryFactor,
-    inSitu,
-    recoverable,
-  };
+function formatNumber(value, digits = 2) {
+  const n = safeNumber(value);
+  if (n === null) return "N/A";
+  return n.toLocaleString("en-IN", {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  });
 }
 
-function fmt(value, digits = 2) {
-  return value === null || value === undefined || !Number.isFinite(value)
-    ? "N/A"
-    : value.toLocaleString(undefined, {
-        minimumFractionDigits: digits,
-        maximumFractionDigits: digits,
-      });
+function formatMT(value) {
+  const n = safeNumber(value);
+  if (n === null) return "N/A";
+  return `${n.toLocaleString("en-IN", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })} MT`;
 }
 
-function fmtTonnes(value) {
-  if (value === null || value === undefined || !Number.isFinite(value)) {
+function displayValue(value) {
+  // CMPDI source fields can be either plain values or objects such as
+  // { value, unit, source } / { count, unit, source }.
+  // Never return the whole object to JSX.
+  if (value && typeof value === "object") {
+    if ("value" in value) return displayValue(value.value);
+    if ("count" in value) return displayValue(value.count);
+    if ("name" in value) return displayValue(value.name);
+    if ("label" in value) return displayValue(value.label);
     return "N/A";
   }
-  if (value >= 1000000000) return `${fmt(value / 1000000000)} Bt`;
-  if (value >= 1000000) return `${fmt(value / 1000000)} Mt`;
-  if (value >= 1000) return `${fmt(value / 1000)} kt`;
-  return `${fmt(value)} t`;
+  return value === null || value === undefined || value === "" ? "N/A" : value;
+}
+
+function sourceOf(value) {
+  if (value && typeof value === "object" && "source" in value) {
+    return value.source || "";
+  }
+  return "";
+}
+
+function parseRange(value) {
+  if (value === null || value === undefined) {
+    return { min: null, max: null };
+  }
+
+  if (typeof value === "object") {
+    const min = safeNumber(value.min);
+    const max = safeNumber(value.max);
+    if (min !== null || max !== null) return { min, max };
+  }
+
+  const text = String(value).replace(/–/g, "-").replace(/—/g, "-");
+  const match = text.match(/(-?\d+(?:\.\d+)?)\s*-\s*(-?\d+(?:\.\d+)?)/);
+
+  if (match) {
+    return {
+      min: safeNumber(match[1]),
+      max: safeNumber(match[2]),
+    };
+  }
+
+  const single = safeNumber(text);
+  return { min: single, max: single };
 }
 
 function downloadText(filename, text) {
@@ -142,12 +86,13 @@ function downloadText(filename, text) {
 
 const styles = {
   page: {
-    padding: "42px 52px 70px",
+    padding: "38px 48px 70px",
     background: "#f5f8fb",
     minHeight: "100%",
     color: "#102744",
+    boxSizing: "border-box",
   },
-  headerRow: {
+  header: {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "flex-start",
@@ -156,1064 +101,818 @@ const styles = {
   },
   eyebrow: {
     color: "#249bb7",
-    fontSize: 14,
-    letterSpacing: "3px",
+    fontSize: 13,
+    letterSpacing: "2.5px",
     fontWeight: 800,
-    marginBottom: 10,
+    marginBottom: 9,
   },
   title: {
     margin: 0,
-    fontSize: 46,
+    fontSize: 42,
     lineHeight: 1.08,
   },
   subtitle: {
+    margin: "12px 0 0",
     color: "#5b728e",
-    fontSize: 17,
+    fontSize: 16,
     lineHeight: 1.55,
     maxWidth: 900,
-    marginTop: 12,
+  },
+  button: {
+    minHeight: 48,
+    padding: "0 18px",
+    border: 0,
+    borderRadius: 11,
+    background: "#2f91aa",
+    color: "#fff",
+    fontWeight: 800,
+    cursor: "pointer",
+    whiteSpace: "nowrap",
   },
   panel: {
     background: "#fff",
     border: "1px solid #d8e2ec",
-    borderRadius: 20,
-    padding: 28,
-    marginBottom: 24,
-    boxShadow: "0 10px 28px rgba(16,39,68,0.05)",
-  },
-  filterGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
-    gap: 16,
-  },
-  inputHint: {
-    marginTop: 6,
-    fontSize: 12,
-    color: "#7890a8",
-    lineHeight: 1.4,
-  },
-  calculationStrip: {
-    marginTop: 18,
-    padding: 18,
-    border: "1px solid #d8e2ec",
-    borderRadius: 14,
-    background: "#f8fbfd",
-  },
-  calculationGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
-    gap: 14,
-    marginTop: 14,
-  },
-  calculationCard: {
-    background: "#fff",
-    border: "1px solid #dbe4ed",
-    borderRadius: 12,
-    padding: 16,
-  },
-  calculationLabel: {
-    color: "#6d829a",
-    fontSize: 11,
-    letterSpacing: "1.5px",
-    fontWeight: 800,
-    textTransform: "uppercase",
-  },
-  calculationValue: {
-    marginTop: 8,
-    color: "#102744",
-    fontSize: 22,
-    fontWeight: 800,
-  },
-  label: {
-    display: "flex",
-    flexDirection: "column",
-    gap: 8,
-    fontWeight: 700,
-    color: "#405a76",
-  },
-  input: {
-    minHeight: 52,
-    padding: "0 14px",
-    border: "1px solid #cad7e4",
-    borderRadius: 12,
-    background: "#fbfdff",
-    color: "#16324f",
-    fontSize: 15,
-  },
-  primary: {
-    minHeight: 52,
-    padding: "0 22px",
-    border: 0,
-    borderRadius: 12,
-    background: "#3aa0b7",
-    color: "#fff",
-    fontWeight: 800,
-    fontSize: 15,
-    cursor: "pointer",
+    borderRadius: 18,
+    padding: 24,
+    marginBottom: 22,
+    boxShadow: "0 8px 24px rgba(16,39,68,0.045)",
   },
   kpiGrid: {
     display: "grid",
     gridTemplateColumns: "repeat(6, minmax(0, 1fr))",
-    gap: 16,
-    marginBottom: 24,
+    gap: 14,
+    marginBottom: 22,
   },
   kpi: {
     background: "#fff",
     border: "1px solid #d8e2ec",
-    borderRadius: 18,
-    padding: 22,
-    minHeight: 128,
+    borderRadius: 16,
+    padding: 18,
+    minHeight: 112,
+    boxSizing: "border-box",
   },
   kpiLabel: {
-    color: "#6d829a",
-    fontSize: 12,
-    letterSpacing: "2px",
+    color: "#71849a",
+    fontSize: 11,
+    letterSpacing: "1.7px",
     fontWeight: 800,
     textTransform: "uppercase",
     lineHeight: 1.4,
   },
   kpiValue: {
-    marginTop: 18,
-    fontSize: 28,
+    marginTop: 13,
+    fontSize: 24,
     fontWeight: 800,
     color: "#102744",
   },
-  sectionEyebrow: {
-    color: "#249bb7",
-    fontSize: 13,
-    letterSpacing: "2.5px",
-    fontWeight: 800,
-  },
   sectionTitle: {
-    margin: "8px 0 18px",
-    fontSize: 28,
+    margin: "7px 0 17px",
+    fontSize: 27,
+  },
+  twoCol: {
+    display: "grid",
+    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+    gap: 20,
+  },
+  infoGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+    gap: 12,
+  },
+  info: {
+    border: "1px solid #e0e7ee",
+    borderRadius: 12,
+    padding: 14,
+    background: "#f9fbfd",
+  },
+  infoLabel: {
+    fontSize: 11,
+    color: "#71849a",
+    fontWeight: 800,
+    letterSpacing: "1.3px",
+    textTransform: "uppercase",
+  },
+  infoValue: {
+    marginTop: 6,
+    fontSize: 17,
+    fontWeight: 750,
+    color: "#173653",
+  },
+  source: {
+    marginTop: 6,
+    fontSize: 11,
+    color: "#7a8da1",
+    lineHeight: 1.4,
+  },
+  notice: {
+    padding: 15,
+    borderRadius: 12,
+    border: "1px solid #d5e4ef",
+    background: "#f7fbfe",
+    color: "#48627e",
+    lineHeight: 1.55,
+    marginBottom: 16,
+  },
+  warning: {
+    padding: 15,
+    borderRadius: 12,
+    border: "1px solid #eadfbf",
+    background: "#fffaf0",
+    color: "#6c5a2e",
+    lineHeight: 1.55,
+    marginBottom: 16,
   },
   tableWrap: {
     overflowX: "auto",
     border: "1px solid #dbe4ed",
-    borderRadius: 14,
+    borderRadius: 13,
   },
   table: {
     width: "100%",
     borderCollapse: "collapse",
-    minWidth: 980,
+    minWidth: 1080,
   },
   th: {
     background: "#13273d",
     color: "#fff",
     textAlign: "left",
-    padding: "14px 12px",
-    fontSize: 13,
+    padding: "13px 11px",
+    fontSize: 12,
     fontWeight: 800,
     whiteSpace: "nowrap",
   },
   td: {
-    padding: "13px 12px",
+    padding: "12px 11px",
     borderTop: "1px solid #e1e8ef",
     color: "#294664",
-    fontSize: 14,
+    fontSize: 13,
     whiteSpace: "nowrap",
   },
   tdStrong: {
-    padding: "13px 12px",
+    padding: "12px 11px",
     borderTop: "1px solid #e1e8ef",
     color: "#102744",
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: 800,
     whiteSpace: "nowrap",
   },
-  notice: {
-    padding: 16,
-    borderRadius: 12,
-    border: "1px solid #d5e4ef",
-    background: "#f7fbfe",
-    color: "#48627e",
-    marginBottom: 18,
-    lineHeight: 1.55,
-  },
-  splitGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-    gap: 24,
-    marginBottom: 24,
-  },
-  noteList: {
-    display: "grid",
-    gap: 10,
-  },
-  note: {
-    padding: 14,
-    background: "#f8fbfd",
-    border: "1px solid #dfe8ef",
-    borderRadius: 12,
-    lineHeight: 1.5,
-    color: "#3e5874",
-  },
   badge: {
     display: "inline-flex",
-    padding: "6px 10px",
+    padding: "5px 9px",
     borderRadius: 999,
-    fontSize: 12,
-    fontWeight: 800,
     background: "#e8f1f7",
     color: "#42627d",
+    fontSize: 11,
+    fontWeight: 800,
+  },
+  empty: {
+    padding: 24,
+    textAlign: "center",
+    color: "#71849a",
   },
 };
 
 export default function ResourceEvaluation() {
-  const [records, setRecords] = useState([]);
+  const [data, setData] = useState(null);
   const [mineFilter, setMineFilter] = useState("ALL");
   const [seamFilter, setSeamFilter] = useState("ALL");
-
-  // User-provided resource evaluation inputs. These are applied to the
-  // currently selected mine/seam population and are clearly treated as
-  // evaluation inputs rather than historical source values.
-  const [resourceArea, setResourceArea] = useState("");
-  const [resourceThickness, setResourceThickness] = useState("");
-  const [resourceDensity, setResourceDensity] = useState("");
-  const [resourceRecovery, setResourceRecovery] = useState("");
-
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
     let cancelled = false;
 
-    async function load() {
+    async function loadRealCMPDIData() {
       setLoading(true);
       setError("");
 
       try {
-        const response = await fetch(
-          `${API_URL}/mining-data?page=1&limit=1000`
-        );
+        const response = await fetch(`${API_URL}/cmpdi/machhakata/all`);
 
         if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
+          throw new Error(`CMPDI API returned HTTP ${response.status}`);
         }
 
-        const data = await response.json();
-        const normalized = (data.records || []).map(normalizeRecord);
+        const json = await response.json();
 
         if (!cancelled) {
-          setRecords(normalized);
+          setData(json);
         }
       } catch (err) {
         if (!cancelled) {
-          setError(err.message || "Could not load mining data.");
-          setRecords([]);
+          setError(
+            err?.message ||
+              "Could not load real CMPDI data. Make sure cmpdi_server.py is running on port 8002."
+          );
+          setData(null);
         }
       } finally {
         if (!cancelled) setLoading(false);
       }
     }
 
-    load();
+    loadRealCMPDIData();
 
     return () => {
       cancelled = true;
     };
   }, []);
 
-  const mines = useMemo(
-    () => [
-      "ALL",
-      ...Array.from(new Set(records.map((r) => r.mine))).sort(),
-    ],
-    [records]
-  );
+  const block = data?.block || {};
+  const blockDetails = block?.block || block;
+  const exploration = data?.exploration?.exploration || data?.exploration || {};
+  const spatial = data?.spatial?.spatial || data?.spatial || {};
+  const seamData = data?.seams || {};
+  const rawSeams = Array.isArray(seamData?.seams) ? seamData.seams : [];
+  const sourceData = data?.sources || {};
+  const sources = Array.isArray(sourceData?.sources) ? sourceData.sources : [];
 
-  const seams = useMemo(
-    () => [
-      "ALL",
-      ...Array.from(new Set(records.map((r) => r.seam))).sort(),
-    ],
-    [records]
-  );
+  const normalizedSeams = useMemo(() => {
+    return rawSeams.map((seam, index) => {
+      const thicknessRange = parseRange(
+        seam.thickness_range ?? seam.thickness ?? seam.thickness_m
+      );
+      const depthRange = parseRange(
+        seam.depth_range ?? seam.depth ?? seam.floor_depth_range
+      );
 
-  const filtered = useMemo(() => {
-    return records.filter((record) => {
-      const mineOk = mineFilter === "ALL" || record.mine === mineFilter;
-      const seamOk = seamFilter === "ALL" || record.seam === seamFilter;
-      return mineOk && seamOk;
+      return {
+        id: seam.id ?? index + 1,
+        seam:
+          seam.seam_name ??
+          seam.name ??
+          seam.seam ??
+          `Seam ${index + 1}`,
+        thicknessMin: thicknessRange.min,
+        thicknessMax: thicknessRange.max,
+        depthMin: depthRange.min,
+        depthMax: depthRange.max,
+        reserve: safeNumber(
+          seam.geological_reserve_mt ??
+            seam.geological_reserve ??
+            seam.reserve_mt ??
+            seam.reserve
+        ),
+        grade: seam.grade ?? seam.coal_grade ?? "N/A",
+      };
     });
-  }, [records, mineFilter, seamFilter]);
+  }, [rawSeams]);
 
-  const manualResource = useMemo(() => {
-    const area = number(resourceArea);
-    const thickness = number(resourceThickness);
-    const density = number(resourceDensity);
-    const recovery = number(resourceRecovery);
+  const mines = ["ALL", "Machhakata (Revised)"];
+  const seamOptions = useMemo(
+    () => ["ALL", ...normalizedSeams.map((row) => row.seam)],
+    [normalizedSeams]
+  );
 
-    const valid =
-      area !== null && area > 0 &&
-      thickness !== null && thickness > 0 &&
-      density !== null && density > 0 &&
-      recovery !== null && recovery >= 0 && recovery <= 100;
-
-    if (!valid) {
-      return { valid: false, area, thickness, density, recovery, volume: null, inSitu: null, recoverable: null };
-    }
-
-    const volume = area * thickness;
-    const inSitu = volume * density;
-    const recoverable = inSitu * (recovery / 100);
-
-    return { valid: true, area, thickness, density, recovery, volume, inSitu, recoverable };
-  }, [resourceArea, resourceThickness, resourceDensity, resourceRecovery]);
-
-  const summary = useMemo(() => {
-    const supported = filtered.filter(
-      (r) => r.inSitu !== null && r.density !== null && r.areaM2 !== null
+  const filteredSeams = useMemo(() => {
+    return normalizedSeams.filter(
+      (row) => seamFilter === "ALL" || row.seam === seamFilter
     );
-    const recoverableSupported = supported.filter(
-      (r) => r.recoverable !== null
-    );
+  }, [normalizedSeams, seamFilter]);
 
-    const sum = (items, key) =>
-      items.reduce((total, item) => {
-        const value = item[key];
-        return total + (value === null ? 0 : value);
-      }, 0);
-
-    const average = (items, key) => {
-      const valid = items
-        .map((item) => item[key])
-        .filter((value) => value !== null && Number.isFinite(value));
-      if (!valid.length) return null;
-      return valid.reduce((a, b) => a + b, 0) / valid.length;
-    };
-
-    const areaCoverage =
-      filtered.length > 0 ? (supported.length / filtered.length) * 100 : 0;
-
-    const densityCoverage =
-      filtered.length > 0
-        ? (filtered.filter((r) => r.density !== null).length /
-            filtered.length) *
-          100
-        : 0;
-
-    const recoveryFactorCoverage =
-      filtered.length > 0
-        ? (filtered.filter((r) => r.recoveryFactor !== null).length /
-            filtered.length) *
-          100
-        : 0;
-
-    return {
-      total: filtered.length,
-      supported: supported.length,
-      recoverableSupported: recoverableSupported.length,
-      inSituTotal: sum(supported, "inSitu"),
-      recoverableTotal: sum(recoverableSupported, "recoverable"),
-      avgThickness: average(filtered, "thickness"),
-      avgDepth: average(filtered, "depth"),
-      avgDensity: average(filtered, "density"),
-      avgRecoveryFactor: average(
-        recoverableSupported,
-        "recoveryFactor"
+  const seamReserveTotal = useMemo(
+    () =>
+      normalizedSeams.reduce(
+        (sum, row) => sum + (row.reserve === null ? 0 : row.reserve),
+        0
       ),
-      avgOperationalRecovery: average(filtered, "recovery"),
-      avgAsh: average(filtered, "ash"),
-      areaCoverage,
-      densityCoverage,
-      recoveryFactorCoverage,
-    };
-  }, [filtered]);
+    [normalizedSeams]
+  );
 
-  const mineAnalysis = useMemo(() => {
-    const groups = {};
+  const largestSeam = useMemo(() => {
+    return normalizedSeams.reduce((best, row) => {
+      if (row.reserve === null) return best;
+      if (!best || row.reserve > best.reserve) return row;
+      return best;
+    }, null);
+  }, [normalizedSeams]);
 
-    filtered.forEach((record) => {
-      if (!groups[record.mine]) {
-        groups[record.mine] = {
-          mine: record.mine,
-          records: 0,
-          supported: 0,
-          inSitu: 0,
-          recoverable: 0,
-          thickness: [],
-          depth: [],
-          density: [],
-        };
-      }
+  const selectedReserveTotal = useMemo(
+    () =>
+      filteredSeams.reduce(
+        (sum, row) => sum + (row.reserve === null ? 0 : row.reserve),
+        0
+      ),
+    [filteredSeams]
+  );
 
-      const group = groups[record.mine];
-      group.records += 1;
+  const selectedCount = filteredSeams.length;
 
-      if (record.inSitu !== null) {
-        group.supported += 1;
-        group.inSitu += record.inSitu;
-      }
+  const ccbisResource = safeNumber(
+    blockDetails?.geological_resource?.value ??
+      blockDetails?.geological_resource_mt
+  );
 
-      if (record.recoverable !== null) {
-        group.recoverable += record.recoverable;
-      }
-
-      if (record.thickness !== null) group.thickness.push(record.thickness);
-      if (record.depth !== null) group.depth.push(record.depth);
-      if (record.density !== null) group.density.push(record.density);
-    });
-
-    const avg = (arr) =>
-      arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : null;
-
-    return Object.values(groups)
-      .map((group) => ({
-        ...group,
-        avgThickness: avg(group.thickness),
-        avgDepth: avg(group.depth),
-        avgDensity: avg(group.density),
-        coverage:
-          group.records > 0
-            ? (group.supported / group.records) * 100
-            : 0,
-      }))
-      .sort((a, b) => b.inSitu - a.inSitu);
-  }, [filtered]);
-
-  const seamAnalysis = useMemo(() => {
-    const groups = {};
-
-    filtered.forEach((record) => {
-      const key = record.seam || "Unknown";
-      if (!groups[key]) {
-        groups[key] = {
-          seam: key,
-          records: 0,
-          supported: 0,
-          inSitu: 0,
-          recoverable: 0,
-          thickness: [],
-          depth: [],
-          density: [],
-        };
-      }
-
-      const group = groups[key];
-      group.records += 1;
-
-      if (record.inSitu !== null) {
-        group.supported += 1;
-        group.inSitu += record.inSitu;
-      }
-
-      if (record.recoverable !== null) {
-        group.recoverable += record.recoverable;
-      }
-
-      if (record.thickness !== null) group.thickness.push(record.thickness);
-      if (record.depth !== null) group.depth.push(record.depth);
-      if (record.density !== null) group.density.push(record.density);
-    });
-
-    const avg = (arr) =>
-      arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : null;
-
-    return Object.values(groups)
-      .map((group) => ({
-        ...group,
-        avgThickness: avg(group.thickness),
-        avgDepth: avg(group.depth),
-        avgDensity: avg(group.density),
-        coverage:
-          group.records > 0
-            ? (group.supported / group.records) * 100
-            : 0,
-      }))
-      .sort((a, b) => b.inSitu - a.inSitu);
-  }, [filtered]);
-
-  const confidence = useMemo(() => {
-    if (!filtered.length) return "NO DATA";
-
-    const score =
-      summary.areaCoverage * 0.45 +
-      summary.densityCoverage * 0.35 +
-      summary.recoveryFactorCoverage * 0.2;
-
-    if (score >= 85) return "HIGH";
-    if (score >= 60) return "MODERATE";
-    return "LIMITED";
-  }, [filtered, summary]);
-
-  const assessment = useMemo(() => {
-    if (!filtered.length) {
-      return ["No records match the current resource evaluation filters."];
-    }
-
-    const notes = [];
-
-    notes.push(
-      `${summary.total} historical mining records are being evaluated; ${summary.supported} have the area/thickness/density inputs needed for an in-situ tonnage calculation.`
-    );
-
-    if (summary.areaCoverage < 60) {
-      notes.push(
-        "Resource coverage is limited because many selected records do not contain a complete area/thickness/density basis."
-      );
-    } else if (summary.areaCoverage < 85) {
-      notes.push(
-        "Resource coverage is moderate. The supported records can provide a preliminary resource view, while unsupported records should remain explicitly excluded from tonnage totals."
-      );
-    } else {
-      notes.push(
-        "Resource coverage is strong for the selected population because most records contain the required physical parameters."
-      );
-    }
-
-    if (summary.recoverableSupported === 0) {
-      notes.push(
-        "Recoverable resource cannot be quantified from the selected records because no usable recovery factor is present."
-      );
-    } else if (summary.recoveryFactorCoverage < 60) {
-      notes.push(
-        "Recoverable resource coverage is limited because recovery-factor data is incomplete."
-      );
-    } else {
-      notes.push(
-        `The supported recoverable-resource subset uses an average recovery factor of ${fmt(
-          summary.avgRecoveryFactor * 100
-        )}%.`
-      );
-    }
-
-    if (summary.avgDensity !== null) {
-      notes.push(
-        `Average recorded coal density across rows with density data is ${fmt(
-          summary.avgDensity
-        )} t/m³.`
-      );
-    }
-
-    return notes;
-  }, [filtered, summary]);
+  const ccbisArea = displayValue(blockDetails?.area);
+  const ccbisGrade = displayValue(blockDetails?.average_grade);
+  const ccbisPRC = displayValue(blockDetails?.peak_rated_capacity);
 
   const downloadReport = () => {
-    const mineText = mineFilter === "ALL" ? "All Mines" : mineFilter;
-    const seamText = seamFilter === "ALL" ? "All Seams" : seamFilter;
+    const selectedText =
+      seamFilter === "ALL" ? "All 24 published seams" : seamFilter;
 
-    const mineRows = mineAnalysis
+    const rows = filteredSeams
       .map(
         (row) =>
-          `${row.mine} | Records ${row.records} | Supported ${row.supported} | Coverage ${fmt(
-            row.coverage
-          )}% | Avg Thickness ${fmt(
-            row.avgThickness
-          )} m | Avg Depth ${fmt(
-            row.avgDepth
-          )} m | Avg Density ${fmt(
-            row.avgDensity
-          )} t/m3 | In-situ ${fmtTonnes(
-            row.inSitu
-          )} | Recoverable ${fmtTonnes(row.recoverable)}`
+          `${row.seam} | Thickness ${formatNumber(
+            row.thicknessMin
+          )}-${formatNumber(row.thicknessMax)} m | Depth ${formatNumber(
+            row.depthMin
+          )}-${formatNumber(row.depthMax)} m | Geological Reserve ${
+            row.reserve === null ? "N/A" : `${formatNumber(row.reserve)} MT`
+          } | Grade ${row.grade}`
       )
       .join("\n");
 
-    const detailRows = filtered
-      .map(
-        (r) =>
-          `${r.id} | ${r.date} | ${r.mine} | ${r.seam} | Thickness ${fmt(
-            r.thickness
-          )} m | Area ${fmt(r.areaM2)} m2 | Density ${fmt(
-            r.density
-          )} t/m3 | Recovery Factor ${
-            r.recoveryFactor === null
-              ? "N/A"
-              : `${fmt(r.recoveryFactor * 100)}%`
-          } | In-situ ${fmtTonnes(
-            r.inSitu
-          )} | Recoverable ${fmtTonnes(r.recoverable)}`
-      )
-      .join("\n");
+    const text = `MINQORA — REAL CMPDI RESOURCE EVALUATION
+==================================================
 
-    const text = `MINQORA RESOURCE EVALUATION REPORT
+CASE
+Block: Machhakata (Revised)
+State: ${blockDetails?.state ?? "Odisha"}
+District: ${blockDetails?.district ?? "Angul"}
+Coalfield: ${blockDetails?.coalfield ?? "Talcher"}
+Mine Type: ${blockDetails?.mine_type ?? "Opencast"}
 
-==================================================
-SELECTION
-==================================================
-Mine: ${mineText}
-Seam: ${seamText}
-Records analyzed: ${summary.total}
-Records with resource calculation support: ${summary.supported}
-Recoverable-resource supported records: ${summary.recoverableSupported}
-
-==================================================
-RESOURCE SUMMARY
-==================================================
-Total in-situ resource: ${fmtTonnes(summary.inSituTotal)}
-Total recoverable resource: ${fmtTonnes(summary.recoverableTotal)}
-Average thickness: ${fmt(summary.avgThickness)} m
-Average depth: ${fmt(summary.avgDepth)} m
-Average density: ${fmt(summary.avgDensity)} t/m3
-Average recovery factor: ${
-      summary.avgRecoveryFactor === null
-        ? "N/A"
-        : `${fmt(summary.avgRecoveryFactor * 100)}%`
+SOURCE-TRACEABLE BLOCK VALUES
+CMPDI CCBIS tentative area: ${ccbisArea?.value ?? ccbisArea ?? "N/A"} ${
+      ccbisArea?.unit ?? "km2"
+    }
+CMPDI CCBIS tentative geological resource: ${
+      ccbisResource === null ? "N/A" : `${formatNumber(ccbisResource)} MT`
+    }
+CMPDI CCBIS average grade: ${ccbisGrade}
+CMPDI CCBIS tentative peak rated capacity: ${ccbisPRC?.value ?? ccbisPRC ?? "N/A"} ${
+      ccbisPRC?.unit ?? "MTPA"
     }
 
-==================================================
-DATA COVERAGE
-==================================================
-Area/Thickness/Density coverage: ${fmt(summary.areaCoverage)}%
-Density coverage: ${fmt(summary.densityCoverage)}%
-Recovery-factor coverage: ${fmt(summary.recoveryFactorCoverage)}%
-Confidence classification: ${confidence}
+SEAM-LEVEL PUBLISHED DATA
+Published seams represented: ${normalizedSeams.length}
+Published seam-table reserve total: ${formatNumber(seamReserveTotal)} MT
+Largest published seam: ${largestSeam?.seam ?? "N/A"}
+Largest seam reserve: ${
+      largestSeam ? formatNumber(largestSeam.reserve) + " MT" : "N/A"
+    }
 
-==================================================
-MINE RESOURCE COMPARISON
-==================================================
-${mineRows || "No mine-level supported records."}
+SELECTION
+Selected: ${selectedText}
+Selected seam count: ${selectedCount}
+Selected seam-table reserve: ${formatNumber(selectedReserveTotal)} MT
 
-==================================================
-RESOURCE ASSESSMENT
-==================================================
-${assessment.map((note, i) => `${i + 1}. ${note}`).join("\n")}
+EXPLORATION
+Exploration status: ${exploration?.exploration_status ?? "Explored"}
+Exploration category: ${displayValue(exploration?.exploration_category)}
+Boreholes: ${displayValue(exploration?.boreholes)}
+Total drilling: ${displayValue(exploration?.total_drilling)}
+Borehole density: ${displayValue(exploration?.borehole_density)}
+Strike: ${displayValue(exploration?.general_strike)}
+Dip: ${displayValue(exploration?.general_dip)}
 
-==================================================
-RECORD-LEVEL RESOURCE EVIDENCE
-==================================================
-ID | Date | Mine | Seam | Thickness | Area | Density | Recovery Factor | In-situ | Recoverable
-${detailRows || "No records available."}
+SEAM DETAILS
+${rows || "No seam rows available."}
 
-==================================================
-METHOD
-==================================================
-In-situ resource is calculated only when area, seam thickness and coal density are all present:
-Area × Thickness × Density.
-
-Recoverable resource is calculated only when the same inputs plus a usable recovery factor are present:
-In-situ Resource × Recovery Factor.
-
-Rows lacking required inputs are not assigned fabricated resource values.
+RESOURCE INTEGRITY RULES
+1. MINQORA uses published CMPDI/source-derived geological reserve values.
+2. CMPDI CCBIS values marked tentative remain explicitly tentative.
+3. The seam-table total and CCBIS block resource are displayed separately because they are different published figures.
+4. No density, recovery factor, borehole coordinates, DTM, DEM, or other unavailable measurement is fabricated.
+5. The seam reserve total is a sum of the published seam-level reserve entries; it is not presented as a new official CMPDI estimate.
 
 Generated by MINQORA Resource Evaluation.
 `;
 
-    downloadText("minqora-resource-evaluation-report.txt", text);
+    downloadText("minqora-machhakata-real-resource-evaluation.txt", text);
   };
+
+  if (loading) {
+    return (
+      <div style={styles.page}>
+        <div style={styles.panel}>Loading real CMPDI resource data...</div>
+      </div>
+    );
+  }
 
   return (
     <div style={styles.page}>
-      <div style={styles.headerRow}>
+      <div style={styles.header}>
         <div>
-          <div style={styles.eyebrow}>
-            PHASE 05 · RESOURCE EVALUATION
-          </div>
-          <h1 style={styles.title}>Resource Evaluation</h1>
+          <div style={styles.eyebrow}>PHASE 05 · RESOURCE EVALUATION</div>
+          <h1 style={styles.title}>Real CMPDI Resource Evaluation</h1>
           <p style={styles.subtitle}>
-            Evidence-based coal resource estimation, resource coverage,
-            mine/seam comparison, confidence and uncertainty analysis using
-            actual MINQORA mining records.
+            Source-traceable geological resource intelligence for Machhakata
+            (Revised), using published CMPDI and geological block information.
+            Missing measurements are shown as unavailable rather than
+            fabricated.
           </p>
         </div>
 
-        <button
-          style={styles.primary}
-          onClick={downloadReport}
-          disabled={!filtered.length}
-        >
+        <button style={styles.button} onClick={downloadReport}>
           Download Resource Report
         </button>
       </div>
 
-      <section style={styles.panel}>
-        <div style={styles.eyebrow}>EVALUATION FILTERS</div>
+      {error && <div style={styles.warning}>{error}</div>}
 
-        <div style={styles.filterGrid}>
-          <label style={styles.label}>
-            Mine
-            <select
-              style={styles.input}
-              value={mineFilter}
-              onChange={(event) => setMineFilter(event.target.value)}
-            >
-              {mines.map((mine) => (
-                <option key={mine} value={mine}>
-                  {mine === "ALL" ? "All Mines" : mine}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label style={styles.label}>
-            Seam
-            <select
-              style={styles.input}
-              value={seamFilter}
-              onChange={(event) => setSeamFilter(event.target.value)}
-            >
-              {seams.map((seam) => (
-                <option key={seam} value={seam}>
-                  {seam === "ALL" ? "All Seams" : seam}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label style={styles.label}>
-            Area (m²)
-            <input
-              type="number"
-              min="0"
-              step="any"
-              style={styles.input}
-              value={resourceArea}
-              onChange={(event) => setResourceArea(event.target.value)}
-              placeholder="Enter area"
-            />
-          </label>
-
-          <label style={styles.label}>
-            Average Thickness (m)
-            <input
-              type="number"
-              min="0"
-              step="any"
-              style={styles.input}
-              value={resourceThickness}
-              onChange={(event) => setResourceThickness(event.target.value)}
-              placeholder="Enter thickness"
-            />
-          </label>
-
-          <label style={styles.label}>
-            Density (t/m³)
-            <input
-              type="number"
-              min="0"
-              step="any"
-              style={styles.input}
-              value={resourceDensity}
-              onChange={(event) => setResourceDensity(event.target.value)}
-              placeholder="Enter density"
-            />
-          </label>
-
-          <label style={styles.label}>
-            Recovery Factor (%)
-            <input
-              type="number"
-              min="0"
-              max="100"
-              step="any"
-              style={styles.input}
-              value={resourceRecovery}
-              onChange={(event) => setResourceRecovery(event.target.value)}
-              placeholder="Enter recovery"
-            />
-          </label>
-
-          <div>
-            <div style={styles.label}>Confidence</div>
-            <div style={{ ...styles.input, display: "flex", alignItems: "center" }}>
-              <span style={styles.badge}>{confidence}</span>
-            </div>
+      {!data ? (
+        <div style={styles.panel}>
+          <strong>Real CMPDI data could not be loaded.</strong>
+          <div style={{ marginTop: 8 }}>
+            Start the CMPDI API with:
           </div>
-
-          <div>
-            <div style={styles.label}>Data Coverage</div>
-            <div style={{ ...styles.input, display: "flex", alignItems: "center" }}>
-              {fmt(summary.areaCoverage)}%
-            </div>
-          </div>
+          <pre
+            style={{
+              background: "#13273d",
+              color: "#fff",
+              padding: 14,
+              borderRadius: 10,
+              overflowX: "auto",
+            }}
+          >
+            uvicorn cmpdi_server:app --reload --port 8002
+          </pre>
         </div>
-
-        <div style={styles.inputHint}>
-          Enter the resource parameters for the selected mine/seam. These values are user-provided evaluation inputs and are not treated as historical source records.
-        </div>
-
-        {manualResource.valid && (
-          <div style={styles.calculationStrip}>
-            <div style={styles.sectionEyebrow}>CALCULATED RESOURCE</div>
-            <div style={{ marginTop: 6, color: "#48627e", lineHeight: 1.5 }}>
-              Area × Thickness gives volume; volume × density gives in-situ resource; recovery factor gives recoverable resource.
-            </div>
-            <div style={styles.calculationGrid}>
-              <div style={styles.calculationCard}>
-                <div style={styles.calculationLabel}>Volume</div>
-                <div style={styles.calculationValue}>{fmt(manualResource.volume)} m³</div>
-              </div>
-              <div style={styles.calculationCard}>
-                <div style={styles.calculationLabel}>In-Situ Resource</div>
-                <div style={styles.calculationValue}>{fmtTonnes(manualResource.inSitu)}</div>
-              </div>
-              <div style={styles.calculationCard}>
-                <div style={styles.calculationLabel}>Recoverable Resource</div>
-                <div style={styles.calculationValue}>{fmtTonnes(manualResource.recoverable)}</div>
-              </div>
-            </div>
-          </div>
-        )}
-      </section>
-
-      {error && <div style={styles.notice}>{error}</div>}
-
-      {loading ? (
-        <div style={styles.panel}>Loading resource intelligence...</div>
       ) : (
         <>
+          <section style={styles.panel}>
+            <div style={styles.eyebrow}>EVALUATION SCOPE</div>
+
+            <div style={styles.infoGrid}>
+              <div style={styles.info}>
+                <div style={styles.infoLabel}>Block</div>
+                <div style={styles.infoValue}>
+                  {blockDetails?.block_name ?? "Machhakata (Revised)"}
+                </div>
+              </div>
+
+              <div style={styles.info}>
+                <div style={styles.infoLabel}>Mine</div>
+                <div style={styles.infoValue}>
+                  {mineFilter === "ALL" ? "Machhakata (Revised)" : mineFilter}
+                </div>
+              </div>
+
+              <div style={styles.info}>
+                <div style={styles.infoLabel}>Seam Filter</div>
+                <select
+                  value={seamFilter}
+                  onChange={(e) => setSeamFilter(e.target.value)}
+                  style={{
+                    marginTop: 7,
+                    width: "100%",
+                    minHeight: 38,
+                    border: "1px solid #cad7e4",
+                    borderRadius: 9,
+                    padding: "0 9px",
+                    background: "#fff",
+                    color: "#16324f",
+                  }}
+                >
+                  {seamOptions.map((seam) => (
+                    <option key={seam} value={seam}>
+                      {seam === "ALL" ? "All Seams" : seam}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div style={styles.info}>
+                <div style={styles.infoLabel}>Data Basis</div>
+                <div style={styles.infoValue}>
+                  Published CMPDI / geological data
+                </div>
+              </div>
+            </div>
+          </section>
+
           <section style={styles.kpiGrid}>
             <div style={styles.kpi}>
-              <div style={styles.kpiLabel}>Records Evaluated</div>
-              <div style={styles.kpiValue}>{summary.total}</div>
+              <div style={styles.kpiLabel}>Published Seams</div>
+              <div style={styles.kpiValue}>{normalizedSeams.length}</div>
             </div>
 
             <div style={styles.kpi}>
-              <div style={styles.kpiLabel}>Supported Records</div>
-              <div style={styles.kpiValue}>{summary.supported}</div>
-            </div>
-
-            <div style={styles.kpi}>
-              <div style={styles.kpiLabel}>In-Situ Resource</div>
-              <div style={styles.kpiValue}>{fmtTonnes(summary.inSituTotal)}</div>
-            </div>
-
-            <div style={styles.kpi}>
-              <div style={styles.kpiLabel}>Recoverable Resource</div>
+              <div style={styles.kpiLabel}>CMPDI CCBIS Resource</div>
               <div style={styles.kpiValue}>
-                {fmtTonnes(summary.recoverableTotal)}
+                {formatMT(ccbisResource)}
               </div>
             </div>
 
             <div style={styles.kpi}>
-              <div style={styles.kpiLabel}>Average Density</div>
+              <div style={styles.kpiLabel}>Seam Table Total</div>
               <div style={styles.kpiValue}>
-                {summary.avgDensity === null
-                  ? "N/A"
-                  : `${fmt(summary.avgDensity)} t/m³`}
+                {formatMT(seamReserveTotal)}
               </div>
             </div>
 
             <div style={styles.kpi}>
-              <div style={styles.kpiLabel}>Recovery-Factor Coverage</div>
+              <div style={styles.kpiLabel}>Largest Seam</div>
               <div style={styles.kpiValue}>
-                {fmt(summary.recoveryFactorCoverage)}%
+                {largestSeam?.seam ?? "N/A"}
+              </div>
+            </div>
+
+            <div style={styles.kpi}>
+              <div style={styles.kpiLabel}>Largest Seam Reserve</div>
+              <div style={styles.kpiValue}>
+                {formatMT(largestSeam?.reserve)}
+              </div>
+            </div>
+
+            <div style={styles.kpi}>
+              <div style={styles.kpiLabel}>Selected Reserve</div>
+              <div style={styles.kpiValue}>
+                {formatMT(selectedReserveTotal)}
               </div>
             </div>
           </section>
 
           <section style={styles.panel}>
-            <div style={styles.sectionEyebrow}>RESOURCE METHODOLOGY</div>
-            <h2 style={styles.sectionTitle}>
-              What MINQORA can actually calculate from the data
-            </h2>
+            <div style={styles.eyebrow}>SOURCE-TRACEABLE RESOURCE BASIS</div>
+            <h2 style={styles.sectionTitle}>Published block information</h2>
 
             <div style={styles.notice}>
-              <strong>In-situ resource:</strong> calculated only where area,
-              seam thickness and coal density are available.{" "}
-              <strong>Recoverable resource:</strong> calculated only where a
-              usable recovery factor is also available. Missing inputs remain
-              N/A rather than being estimated with invented values.
+              <strong>Important:</strong> the CMPDI CCBIS geological resource
+              and the sum of the published seam-level reserve entries are
+              displayed separately. MINQORA does not silently replace one
+              published figure with the other.
             </div>
 
-            <div style={styles.splitGrid}>
-              <div style={styles.panel}>
-                <div style={styles.sectionEyebrow}>DATA COVERAGE</div>
-                <h3 style={{ margin: "8px 0 12px" }}>
-                  Input completeness
-                </h3>
-                <div style={styles.noteList}>
-                  <div style={styles.note}>
-                    Area / thickness / density coverage:{" "}
-                    <strong>{fmt(summary.areaCoverage)}%</strong>
+            <div style={styles.twoCol}>
+              <div style={styles.infoGrid}>
+                <div style={styles.info}>
+                  <div style={styles.infoLabel}>Area</div>
+                  <div style={styles.infoValue}>
+                    {ccbisArea?.value ?? ccbisArea ?? "N/A"}{" "}
+                    {ccbisArea?.unit ?? "km²"}
                   </div>
-                  <div style={styles.note}>
-                    Density coverage:{" "}
-                    <strong>{fmt(summary.densityCoverage)}%</strong>
+                  <div style={styles.source}>
+                    Status: {ccbisArea?.status ?? "published"}
+                    {sourceOf(blockDetails?.area)
+                      ? ` · ${sourceOf(blockDetails.area)}`
+                      : ""}
                   </div>
-                  <div style={styles.note}>
-                    Recovery-factor coverage:{" "}
-                    <strong>
-                      {fmt(summary.recoveryFactorCoverage)}%
-                    </strong>
+                </div>
+
+                <div style={styles.info}>
+                  <div style={styles.infoLabel}>Geological Resource</div>
+                  <div style={styles.infoValue}>
+                    {formatMT(ccbisResource)}
+                  </div>
+                  <div style={styles.source}>
+                    Status:{" "}
+                    {blockDetails?.geological_resource?.status ??
+                      "tentative"}{" "}
+                    · CMPDI CCBIS
+                  </div>
+                </div>
+
+                <div style={styles.info}>
+                  <div style={styles.infoLabel}>Average Grade</div>
+                  <div style={styles.infoValue}>{ccbisGrade}</div>
+                  <div style={styles.source}>Source: CMPDI CCBIS</div>
+                </div>
+
+                <div style={styles.info}>
+                  <div style={styles.infoLabel}>Peak Rated Capacity</div>
+                  <div style={styles.infoValue}>
+                    {ccbisPRC?.value ?? ccbisPRC ?? "N/A"}{" "}
+                    {ccbisPRC?.unit ?? "MTPA"}
+                  </div>
+                  <div style={styles.source}>
+                    Status: {ccbisPRC?.status ?? "tentative"} · CMPDI CCBIS
                   </div>
                 </div>
               </div>
 
-              <div style={styles.panel}>
-                <div style={styles.sectionEyebrow}>RESOURCE ASSESSMENT</div>
-                <h3 style={{ margin: "8px 0 12px" }}>
-                  Evidence-based interpretation
-                </h3>
-                <div style={styles.noteList}>
-                  {assessment.map((note, index) => (
-                    <div style={styles.note} key={index}>
-                      {note}
-                    </div>
-                  ))}
+              <div>
+                <div style={styles.info}>
+                  <div style={styles.infoLabel}>Largest Published Seam</div>
+                  <div style={styles.infoValue}>
+                    {largestSeam?.seam ?? "N/A"}
+                  </div>
+                  <div style={styles.source}>
+                    Published seam reserve:{" "}
+                    {formatMT(largestSeam?.reserve)}
+                  </div>
+                </div>
+
+                <div style={{ ...styles.info, marginTop: 12 }}>
+                  <div style={styles.infoLabel}>Exploration</div>
+                  <div style={styles.infoValue}>
+                    {exploration?.exploration_status ?? "Explored"} ·{" "}
+                    {displayValue(exploration?.exploration_category)}
+                  </div>
+                  <div style={styles.source}>
+                    {displayValue(exploration?.boreholes)} boreholes ·{" "}
+                    {displayValue(exploration?.total_drilling)} drilling
+                  </div>
+                </div>
+
+                <div style={{ ...styles.info, marginTop: 12 }}>
+                  <div style={styles.infoLabel}>Spatial Availability</div>
+                  <div style={styles.infoValue}>
+                    Boundary survey:{" "}
+                    {spatial?.spatial_data_status?.boundary_survey ??
+                      "N/A"}
+                  </div>
+                  <div style={styles.source}>
+                    Coordinates/DTM are not treated as available unless the
+                    underlying files are obtained.
+                  </div>
                 </div>
               </div>
             </div>
           </section>
 
           <section style={styles.panel}>
-            <div style={styles.sectionEyebrow}>MINE RESOURCE INTELLIGENCE</div>
-            <h2 style={styles.sectionTitle}>Resource profile by mine</h2>
-
-            <div style={styles.tableWrap}>
-              <table style={styles.table}>
-                <thead>
-                  <tr>
-                    <th style={styles.th}>Mine</th>
-                    <th style={styles.th}>Records</th>
-                    <th style={styles.th}>Supported</th>
-                    <th style={styles.th}>Coverage</th>
-                    <th style={styles.th}>Avg Thickness</th>
-                    <th style={styles.th}>Avg Depth</th>
-                    <th style={styles.th}>Avg Density</th>
-                    <th style={styles.th}>In-Situ</th>
-                    <th style={styles.th}>Recoverable</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {mineAnalysis.length ? (
-                    mineAnalysis.map((row) => (
-                      <tr key={row.mine}>
-                        <td style={styles.tdStrong}>{row.mine}</td>
-                        <td style={styles.td}>{row.records}</td>
-                        <td style={styles.td}>{row.supported}</td>
-                        <td style={styles.td}>{fmt(row.coverage)}%</td>
-                        <td style={styles.td}>
-                          {fmt(row.avgThickness)} m
-                        </td>
-                        <td style={styles.td}>{fmt(row.avgDepth)} m</td>
-                        <td style={styles.td}>
-                          {row.avgDensity === null
-                            ? "N/A"
-                            : `${fmt(row.avgDensity)} t/m³`}
-                        </td>
-                        <td style={styles.td}>{fmtTonnes(row.inSitu)}</td>
-                        <td style={styles.td}>
-                          {fmtTonnes(row.recoverable)}
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td style={styles.td} colSpan="9">
-                        No resource records available for the current filters.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </section>
-
-          <section style={styles.panel}>
-            <div style={styles.sectionEyebrow}>SEAM RESOURCE INTELLIGENCE</div>
-            <h2 style={styles.sectionTitle}>Resource profile by seam</h2>
-
-            <div style={styles.tableWrap}>
-              <table style={styles.table}>
-                <thead>
-                  <tr>
-                    <th style={styles.th}>Seam</th>
-                    <th style={styles.th}>Records</th>
-                    <th style={styles.th}>Supported</th>
-                    <th style={styles.th}>Coverage</th>
-                    <th style={styles.th}>Avg Thickness</th>
-                    <th style={styles.th}>Avg Depth</th>
-                    <th style={styles.th}>Avg Density</th>
-                    <th style={styles.th}>In-Situ</th>
-                    <th style={styles.th}>Recoverable</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {seamAnalysis.length ? (
-                    seamAnalysis.map((row) => (
-                      <tr key={row.seam}>
-                        <td style={styles.tdStrong}>{row.seam}</td>
-                        <td style={styles.td}>{row.records}</td>
-                        <td style={styles.td}>{row.supported}</td>
-                        <td style={styles.td}>{fmt(row.coverage)}%</td>
-                        <td style={styles.td}>
-                          {fmt(row.avgThickness)} m
-                        </td>
-                        <td style={styles.td}>{fmt(row.avgDepth)} m</td>
-                        <td style={styles.td}>
-                          {row.avgDensity === null
-                            ? "N/A"
-                            : `${fmt(row.avgDensity)} t/m³`}
-                        </td>
-                        <td style={styles.td}>{fmtTonnes(row.inSitu)}</td>
-                        <td style={styles.td}>
-                          {fmtTonnes(row.recoverable)}
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td style={styles.td} colSpan="9">
-                        No seam resource data available.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </section>
-
-          <section style={styles.panel}>
-            <div style={styles.sectionEyebrow}>RECORD-LEVEL EVIDENCE</div>
+            <div style={styles.eyebrow}>SEAM RESOURCE INTELLIGENCE</div>
             <h2 style={styles.sectionTitle}>
-              Complete resource evaluation evidence
+              Published resource profile by seam
             </h2>
 
             <div style={styles.tableWrap}>
               <table style={styles.table}>
                 <thead>
                   <tr>
-                    <th style={styles.th}>ID</th>
-                    <th style={styles.th}>Date</th>
-                    <th style={styles.th}>Mine</th>
+                    <th style={styles.th}>#</th>
                     <th style={styles.th}>Seam</th>
-                    <th style={styles.th}>Thickness</th>
-                    <th style={styles.th}>Area</th>
-                    <th style={styles.th}>Density</th>
-                    <th style={styles.th}>Recovery Factor</th>
-                    <th style={styles.th}>In-Situ</th>
-                    <th style={styles.th}>Recoverable</th>
+                    <th style={styles.th}>Thickness Range</th>
+                    <th style={styles.th}>Depth Range</th>
+                    <th style={styles.th}>Geological Reserve</th>
+                    <th style={styles.th}>Grade</th>
+                    <th style={styles.th}>Share of Seam Total</th>
                   </tr>
                 </thead>
+
                 <tbody>
-                  {filtered.map((record) => (
-                    <tr key={record.id}>
-                      <td style={styles.td}>{record.id}</td>
-                      <td style={styles.td}>{record.date}</td>
-                      <td style={styles.td}>{record.mine}</td>
-                      <td style={styles.tdStrong}>{record.seam}</td>
-                      <td style={styles.td}>
-                        {fmt(record.thickness)} m
-                      </td>
-                      <td style={styles.td}>
-                        {record.areaM2 === null
-                          ? "N/A"
-                          : `${fmt(record.areaM2)} m²`}
-                      </td>
-                      <td style={styles.td}>
-                        {record.density === null
-                          ? "N/A"
-                          : `${fmt(record.density)} t/m³`}
-                      </td>
-                      <td style={styles.td}>
-                        {record.recoveryFactor === null
-                          ? "N/A"
-                          : `${fmt(record.recoveryFactor * 100)}%`}
-                      </td>
-                      <td style={styles.td}>
-                        {fmtTonnes(record.inSitu)}
-                      </td>
-                      <td style={styles.td}>
-                        {fmtTonnes(record.recoverable)}
+                  {filteredSeams.length ? (
+                    filteredSeams.map((row, index) => {
+                      const share =
+                        seamReserveTotal > 0 && row.reserve !== null
+                          ? (row.reserve / seamReserveTotal) * 100
+                          : null;
+
+                      return (
+                        <tr key={`${row.id}-${row.seam}`}>
+                          <td style={styles.td}>{index + 1}</td>
+                          <td style={styles.tdStrong}>{row.seam}</td>
+                          <td style={styles.td}>
+                            {formatNumber(row.thicknessMin)} –{" "}
+                            {formatNumber(row.thicknessMax)} m
+                          </td>
+                          <td style={styles.td}>
+                            {formatNumber(row.depthMin)} –{" "}
+                            {formatNumber(row.depthMax)} m
+                          </td>
+                          <td style={styles.tdStrong}>
+                            {formatMT(row.reserve)}
+                          </td>
+                          <td style={styles.td}>
+                            <span style={styles.badge}>{row.grade}</span>
+                          </td>
+                          <td style={styles.td}>
+                            {share === null
+                              ? "N/A"
+                              : `${formatNumber(share)}%`}
+                          </td>
+                        </tr>
+                      );
+                    })
+                  ) : (
+                    <tr>
+                      <td style={styles.empty} colSpan="7">
+                        No seam data available for this selection.
                       </td>
                     </tr>
-                  ))}
+                  )}
                 </tbody>
               </table>
             </div>
+          </section>
+
+          <section style={styles.panel}>
+            <div style={styles.eyebrow}>EXPLORATION EVIDENCE</div>
+            <h2 style={styles.sectionTitle}>Real exploration basis</h2>
+
+            <div style={styles.infoGrid}>
+              <div style={styles.info}>
+                <div style={styles.infoLabel}>Boreholes</div>
+                <div style={styles.infoValue}>
+                  {displayValue(exploration?.boreholes)}
+                </div>
+              </div>
+
+              <div style={styles.info}>
+                <div style={styles.infoLabel}>Total Drilling</div>
+                <div style={styles.infoValue}>
+                  {displayValue(exploration?.total_drilling)}
+                </div>
+              </div>
+
+              <div style={styles.info}>
+                <div style={styles.infoLabel}>Borehole Density</div>
+                <div style={styles.infoValue}>
+                  {displayValue(exploration?.borehole_density)}
+                </div>
+              </div>
+
+              <div style={styles.info}>
+                <div style={styles.infoLabel}>General Strike</div>
+                <div style={styles.infoValue}>
+                  {displayValue(exploration?.general_strike)}
+                </div>
+              </div>
+
+              <div style={styles.info}>
+                <div style={styles.infoLabel}>General Dip</div>
+                <div style={styles.infoValue}>
+                  {displayValue(exploration?.general_dip)}
+                </div>
+              </div>
+
+              <div style={styles.info}>
+                <div style={styles.infoLabel}>Exploration Agency</div>
+                <div style={styles.infoValue}>
+                  {displayValue(exploration?.exploration_agency)}
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section style={styles.panel}>
+            <div style={styles.eyebrow}>RESOURCE INTEGRITY</div>
+            <h2 style={styles.sectionTitle}>What MINQORA does — and does not — infer</h2>
+
+            <div style={styles.twoCol}>
+              <div style={styles.notice}>
+                <strong>Uses real published values:</strong>
+                <br />
+                CMPDI CCBIS block resource, published seam reserves, seam
+                thickness ranges, seam depth ranges, grades and exploration
+                evidence.
+              </div>
+
+              <div style={styles.warning}>
+                <strong>No fabricated inputs:</strong>
+                <br />
+                MINQORA does not invent coal density, recovery factor,
+                borehole coordinates, DTM/DEM, boundary coordinates or
+                record-level tonnage where those underlying measurements are
+                unavailable.
+              </div>
+            </div>
+
+            <div style={{ marginTop: 4, color: "#5b728e", lineHeight: 1.55 }}>
+              The seam-table total shown above is a direct sum of the published
+              seam reserve entries. It is a MINQORA aggregation for analysis,
+              not a new official CMPDI reserve estimate.
+            </div>
+          </section>
+
+          <section style={styles.panel}>
+            <div style={styles.eyebrow}>SOURCE REGISTRY</div>
+            <h2 style={styles.sectionTitle}>Traceability</h2>
+
+            {sources.length ? (
+              <div style={styles.tableWrap}>
+                <table style={styles.table}>
+                  <thead>
+                    <tr>
+                      <th style={styles.th}>Source ID</th>
+                      <th style={styles.th}>Organization</th>
+                      <th style={styles.th}>Title</th>
+                      <th style={styles.th}>Type</th>
+                      <th style={styles.th}>Reliability</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sources.map((source) => (
+                      <tr key={source.source_id || source.title}>
+                        <td style={styles.tdStrong}>
+                          {source.source_id ?? "N/A"}
+                        </td>
+                        <td style={styles.td}>
+                          {source.organization ?? "N/A"}
+                        </td>
+                        <td style={styles.td}>
+                          {source.title ?? "N/A"}
+                        </td>
+                        <td style={styles.td}>
+                          {source.source_type ?? "N/A"}
+                        </td>
+                        <td style={styles.td}>
+                          <span style={styles.badge}>
+                            {source.reliability ?? "N/A"}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div style={styles.empty}>No source registry entries available.</div>
+            )}
           </section>
         </>
       )}

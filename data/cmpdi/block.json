@@ -1,0 +1,48 @@
+{
+  "block_name": "Machhakata (Revised)",
+  "state": "Odisha",
+  "district": "Angul",
+  "coalfield": "Talcher",
+  "exploration_status": "Explored",
+  "mine_type": "Opencast",
+
+  "area": {
+    "value": 19.99,
+    "unit": "km2",
+    "status": "tentative",
+    "source": "CMPDI Coal Block Information System"
+  },
+
+  "geological_resource": {
+    "value": 1369,
+    "unit": "MT",
+    "status": "tentative",
+    "source": "CMPDI Coal Block Information System"
+  },
+
+  "average_grade": {
+    "value": "G11",
+    "source": "CMPDI Coal Block Information System"
+  },
+
+  "peak_rated_capacity": {
+    "value": 30,
+    "unit": "MTPA",
+    "status": "tentative",
+    "source": "CMPDI Coal Block Information System"
+  },
+
+  "exploration_agency": "Central Mine Planning & Design Institute Limited (CMPDI)",
+
+  "data_quality": {
+    "classification": "official_source",
+    "note": "Values are preserved with their source status. Tentative values are not treated as final measurements."
+  },
+
+  "source": {
+    "organization": "Central Mine Planning & Design Institute Limited (CMPDI)",
+    "system": "Coal Block Information System (CCBIS)",
+    "accessed": "2026-09-06",
+    "url": "https://coalblock-is.cmpdi.co.in/pages/dashboard.php"
+  }
+}

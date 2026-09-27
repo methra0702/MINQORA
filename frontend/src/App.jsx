@@ -2,11 +2,18 @@ import { useEffect, useMemo, useState } from "react";
 import "./App.css";
 
 import MiningData from "./pages/MiningData";
+import CMPDIRealData from "./pages/CMPDIRealData";
 import Predict from "./pages/Predict";
 import Generate from "./pages/Generate";
 import GeologicalIntelligence from "./pages/GeologicalIntelligence";
 import ResourceEvaluation from "./pages/ResourceEvaluation";
+import GeomaticsSurvey from "./pages/GeomaticsSurvey";
 import MineDesignOptimization from "./pages/MineDesignOptimization";
+import Visualization3D from "./pages/Visualization3D";
+import Brain2 from "./pages/Brain2";
+import FinalIntegration from "./pages/FinalIntegration";
+import { WorkspaceProvider } from "./MINQORAWorkspaceContext";
+import MINQORAWorkspaceBar from "./MINQORAWorkspaceBar";
 
 const API_URL = "http://127.0.0.1:8000";
 
@@ -55,28 +62,28 @@ const brainPhases = [
     title: "Mine Design & Optimization",
     description:
       "Mine planning and optimization.",
-    status: "UPCOMING",
+    status: "ACTIVE",
   },
   {
     number: "07",
     title: "Geomatics & Survey",
     description:
       "Coordinates, survey and spatial intelligence.",
-    status: "UPCOMING",
+    status: "ACTIVE",
   },
   {
     number: "08",
     title: "Visualization & 3D",
     description:
       "Real 2D and 3D visualization using actual data.",
-    status: "UPCOMING",
+    status: "ACTIVE",
   },
   {
     number: "09",
     title: "Final MINQORA Integration",
     description:
       "Complete MINQORA intelligence integration.",
-    status: "UPCOMING",
+    status: "ACTIVE",
   },
 ];
 
@@ -84,7 +91,7 @@ const brainPhases = [
 // APP
 // ============================================================
 
-function App() {
+function AppContent() {
   const [activePage, setActivePage] =
     useState("dashboard");
 
@@ -1059,104 +1066,6 @@ function App() {
   );
 
   // ============================================================
-  // BRAIN 2 PAGE
-  // ============================================================
-
-  const Brain2Page = () => (
-    <div className="page">
-      <div className="brain-page-header">
-        <div>
-          <p className="eyebrow">
-            MINQORA BRAIN 2
-          </p>
-
-          <h1>
-            AI Intelligence Workspace
-          </h1>
-
-          <p>
-            Conversational access to MINQORA
-            mining intelligence.
-          </p>
-        </div>
-
-        <div className="brain-online">
-          <span></span>
-          BRAIN 2 ONLINE
-        </div>
-      </div>
-
-      <section className="chat-workspace">
-        <div className="chat-messages">
-          {messages.map(
-            (message, index) => (
-              <div
-                key={index}
-                className={`chat-message ${message.role}`}
-              >
-                <strong>
-                  {message.brain}
-                </strong>
-
-                <p>
-                  {message.text}
-                </p>
-              </div>
-            )
-          )}
-
-          {loading && (
-            <div className="chat-message assistant">
-              <strong>
-                MINQORA
-              </strong>
-
-              <p>
-                Analyzing mining intelligence...
-              </p>
-            </div>
-          )}
-        </div>
-
-        <div className="chat-input-area">
-          <textarea
-            value={question}
-            onChange={(event) =>
-              setQuestion(event.target.value)
-            }
-            placeholder="Ask MINQORA anything about your mining data..."
-          />
-
-          <button
-            className="primary-button"
-            onClick={askMINQORA}
-            disabled={loading}
-          >
-            Send
-          </button>
-        </div>
-
-        <button
-          className="secondary-button"
-          onClick={() =>
-            downloadText(
-              "minqora-chat.txt",
-              messages
-                .map(
-                  (message) =>
-                    `${message.brain}: ${message.text}`
-                )
-                .join("\n\n")
-            )
-          }
-        >
-          Download Chat
-        </button>
-      </section>
-    </div>
-  );
-
-  // ============================================================
   // PAGE RENDERER
   // ============================================================
 
@@ -1172,7 +1081,10 @@ function App() {
         return <Brain1Page />;
 
       case "brain2":
-        return <Brain2Page />;
+        return <Brain2 />;
+
+      case "cmpdi-real":
+        return <CMPDIRealData />;
 
       case "predict":
         return <Predict />;
@@ -1186,8 +1098,17 @@ function App() {
       case "resource":
         return <ResourceEvaluation />;
 
+      case "geomatics":
+        return <GeomaticsSurvey />;
+
       case "mine-design":
         return <MineDesignOptimization />;
+
+      case "visualization":
+        return <Visualization3D />;
+
+      case "integration":
+        return <FinalIntegration onNavigate={setActivePage} />;
 
       default:
         return <Dashboard />;
@@ -1279,8 +1200,36 @@ function App() {
             Resource Evaluation
           </NavButton>
 
+          <NavButton id="cmpdi-real">
+            Real CMPDI Data
+          </NavButton>
+
+          <NavButton id="geomatics">
+            Geomatics & Survey
+          </NavButton>
+
           <NavButton id="mine-design">
             Mine Design & Optimization
+          </NavButton>
+        </div>
+
+        <div className="nav-section">
+          <p className="nav-title">
+            VISUALIZATION
+          </p>
+
+          <NavButton id="visualization">
+            Visualization & 2D/3D Models
+          </NavButton>
+        </div>
+
+        <div className="nav-section">
+          <p className="nav-title">
+            INTEGRATION
+          </p>
+
+          <NavButton id="integration">
+            Final MINQORA Integration
           </NavButton>
         </div>
 
@@ -1336,10 +1285,19 @@ function App() {
         </header>
 
         <div className="content">
+          <MINQORAWorkspaceBar />
           {renderPage()}
         </div>
       </main>
     </div>
+  );
+}
+
+function App() {
+  return (
+    <WorkspaceProvider>
+      <AppContent />
+    </WorkspaceProvider>
   );
 }
 

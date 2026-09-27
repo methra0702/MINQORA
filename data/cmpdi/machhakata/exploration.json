@@ -1,0 +1,66 @@
+{
+  "block_name": "Machhakata (Revised)",
+
+  "exploration_status": "Explored",
+
+  "exploration_category": {
+    "value": "G1",
+    "source": "CMPDI pre-bid presentation"
+  },
+
+  "exploration_agency": {
+    "value": "Central Mine Planning & Design Institute Limited (CMPDI)",
+    "source": "Published geological/block information"
+  },
+
+  "boreholes": {
+    "count": 193,
+    "unit": "boreholes",
+    "source": "Machhakata & Mahanadi geological summary"
+  },
+
+  "total_drilling": {
+    "value": 39602,
+    "unit": "m",
+    "source": "Machhakata & Mahanadi geological summary"
+  },
+
+  "borehole_density": {
+    "value": 9.5,
+    "unit": "boreholes/km2",
+    "source": "Machhakata & Mahanadi geological summary"
+  },
+
+  "general_strike": {
+    "value": "East-West",
+    "source": "Machhakata & Mahanadi geological summary"
+  },
+
+  "general_dip": {
+    "min": 3,
+    "max": 5,
+    "unit": "degrees",
+    "source": "Machhakata & Mahanadi geological summary"
+  },
+
+  "exploration_activities": [
+    "Borehole drilling",
+    "Geophysical investigation",
+    "Geological interpretation",
+    "Coal quality assessment",
+    "Geological modelling",
+    "Resource evaluation"
+  ],
+
+  "data_quality": {
+    "classification": "source_derived",
+    "note": "Exploration values are preserved from published geological/block information. No borehole-level coordinates or measurements are invented."
+  },
+
+  "source": {
+    "primary_organization": "Central Mine Planning & Design Institute Limited (CMPDI)",
+    "document": "Machhakata & Mahanadi Coal Block Summary",
+    "supporting_source": "CMPDI pre-bid presentation",
+    "note": "The exploration figures describe the published geological exploration information and are not newly calculated by MINQORA."
+  }
+}

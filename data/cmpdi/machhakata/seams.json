@@ -1,0 +1,330 @@
+{
+  "block_name": "Machhakata (Revised)",
+  "dataset_type": "seam_level_geological_data",
+  "source_status": "source_derived",
+
+  "seams": [
+    {
+      "seam_name": "XI",
+      "thickness_range_m": {
+        "min": 0.20,
+        "max": 7.27
+      },
+      "depth_range_m_floor": {
+        "min": 16.37,
+        "max": 139.38
+      },
+      "geological_reserve_mt": 10.77,
+      "grade": "E - G"
+    },
+    {
+      "seam_name": "X",
+      "thickness_range_m": {
+        "min": 0.12,
+        "max": 3.77
+      },
+      "depth_range_m_floor": {
+        "min": 14.51,
+        "max": 147.10
+      },
+      "geological_reserve_mt": 5.13,
+      "grade": "E - G"
+    },
+    {
+      "seam_name": "IX TOP",
+      "thickness_range_m": {
+        "min": 0.10,
+        "max": 4.96
+      },
+      "depth_range_m_floor": {
+        "min": 14.00,
+        "max": 160.87
+      },
+      "geological_reserve_mt": 11.70,
+      "grade": "E - G"
+    },
+    {
+      "seam_name": "IX BOT",
+      "thickness_range_m": {
+        "min": 0.40,
+        "max": 6.37
+      },
+      "depth_range_m_floor": {
+        "min": 14.74,
+        "max": 167.97
+      },
+      "geological_reserve_mt": 64.48,
+      "grade": "E - G"
+    },
+    {
+      "seam_name": "VIII",
+      "thickness_range_m": {
+        "min": 0.49,
+        "max": 13.92
+      },
+      "depth_range_m_floor": {
+        "min": 16.16,
+        "max": 122.68
+      },
+      "geological_reserve_mt": 122.71,
+      "grade": "F - G"
+    },
+    {
+      "seam_name": "VII TOP",
+      "thickness_range_m": {
+        "min": 0.29,
+        "max": 12.60
+      },
+      "depth_range_m_floor": {
+        "min": 15.00,
+        "max": 140.95
+      },
+      "geological_reserve_mt": 120.04,
+      "grade": "E - G"
+    },
+    {
+      "seam_name": "VII BOT",
+      "thickness_range_m": {
+        "min": 0.07,
+        "max": 5.37
+      },
+      "depth_range_m_floor": {
+        "min": 16.81,
+        "max": 143.76
+      },
+      "geological_reserve_mt": 7.51,
+      "grade": "E - G"
+    },
+    {
+      "seam_name": "VI TOP",
+      "thickness_range_m": {
+        "min": 0.34,
+        "max": 8.21
+      },
+      "depth_range_m_floor": {
+        "min": 10.11,
+        "max": 152.00
+      },
+      "geological_reserve_mt": 80.98,
+      "grade": "E - G"
+    },
+    {
+      "seam_name": "VI BOT",
+      "thickness_range_m": {
+        "min": 0.20,
+        "max": 12.58
+      },
+      "depth_range_m_floor": {
+        "min": 17.57,
+        "max": 174.51
+      },
+      "geological_reserve_mt": 78.46,
+      "grade": "E - G"
+    },
+    {
+      "seam_name": "IV/V",
+      "thickness_range_m": {
+        "min": 0.13,
+        "max": 5.85
+      },
+      "depth_range_m_floor": {
+        "min": 19.75,
+        "max": 176.20
+      },
+      "geological_reserve_mt": 56.73,
+      "grade": "D - G"
+    },
+    {
+      "seam_name": "III TOP TOP",
+      "thickness_range_m": {
+        "min": 2.25,
+        "max": 13.65
+      },
+      "depth_range_m_floor": {
+        "min": 29.00,
+        "max": 181.00
+      },
+      "geological_reserve_mt": 158.03,
+      "grade": "E - G"
+    },
+    {
+      "seam_name": "III MID",
+      "thickness_range_m": {
+        "min": 3.98,
+        "max": 10.82
+      },
+      "depth_range_m_floor": {
+        "min": 41.66,
+        "max": 202.90
+      },
+      "geological_reserve_mt": 217.16,
+      "grade": "D - G"
+    },
+    {
+      "seam_name": "III BOT TOP",
+      "thickness_range_m": {
+        "min": 0.36,
+        "max": 5.84
+      },
+      "depth_range_m_floor": {
+        "min": 45.63,
+        "max": 205.85
+      },
+      "geological_reserve_mt": 72.77,
+      "grade": "C - G"
+    },
+    {
+      "seam_name": "III BOT BOT",
+      "thickness_range_m": {
+        "min": 0.05,
+        "max": 5.91
+      },
+      "depth_range_m_floor": {
+        "min": 45.00,
+        "max": 199.44
+      },
+      "geological_reserve_mt": 10.79,
+      "grade": "F - G"
+    },
+    {
+      "seam_name": "LOCAL 1",
+      "thickness_range_m": {
+        "min": 0.05,
+        "max": 2.62
+      },
+      "depth_range_m_floor": {
+        "min": 50.30,
+        "max": 233.19
+      },
+      "geological_reserve_mt": 19.07,
+      "grade": "D - G"
+    },
+    {
+      "seam_name": "LOCAL 2",
+      "thickness_range_m": {
+        "min": 0.08,
+        "max": 2.62
+      },
+      "depth_range_m_floor": {
+        "min": 62.10,
+        "max": 235.92
+      },
+      "geological_reserve_mt": 14.61,
+      "grade": "E - G"
+    },
+    {
+      "seam_name": "II TOP",
+      "thickness_range_m": {
+        "min": 0.12,
+        "max": 5.47
+      },
+      "depth_range_m_floor": {
+        "min": 70.05,
+        "max": 241.91
+      },
+      "geological_reserve_mt": 43.07,
+      "grade": "E - G"
+    },
+    {
+      "seam_name": "II MID",
+      "thickness_range_m": {
+        "min": 0.06,
+        "max": 2.31
+      },
+      "depth_range_m_floor": {
+        "min": 8.95,
+        "max": 247.48
+      },
+      "geological_reserve_mt": 8.20,
+      "grade": "E - G"
+    },
+    {
+      "seam_name": "II BOT",
+      "thickness_range_m": {
+        "min": 0.07,
+        "max": 2.76
+      },
+      "depth_range_m_floor": {
+        "min": 89.88,
+        "max": 233.72
+      },
+      "geological_reserve_mt": 5.96,
+      "grade": "D - G"
+    },
+    {
+      "seam_name": "I A TOP",
+      "thickness_range_m": {
+        "min": 0.19,
+        "max": 2.74
+      },
+      "depth_range_m_floor": {
+        "min": 124.81,
+        "max": 232.75
+      },
+      "geological_reserve_mt": 12.22,
+      "grade": "E - G"
+    },
+    {
+      "seam_name": "I A BOT",
+      "thickness_range_m": {
+        "min": 0.10,
+        "max": 5.17
+      },
+      "depth_range_m_floor": {
+        "min": 113.57,
+        "max": 239.15
+      },
+      "geological_reserve_mt": 38.42,
+      "grade": "D - G"
+    },
+    {
+      "seam_name": "I B",
+      "thickness_range_m": {
+        "min": 1.60,
+        "max": 12.15
+      },
+      "depth_range_m_floor": {
+        "min": 125.17,
+        "max": 250.00
+      },
+      "geological_reserve_mt": 180.18,
+      "grade": "C - G"
+    },
+    {
+      "seam_name": "I C",
+      "thickness_range_m": {
+        "min": 0.09,
+        "max": 4.86
+      },
+      "depth_range_m_floor": {
+        "min": 132.87,
+        "max": 258.70
+      },
+      "geological_reserve_mt": 9.37,
+      "grade": "C - G"
+    },
+    {
+      "seam_name": "I D",
+      "thickness_range_m": {
+        "min": 0.10,
+        "max": 8.77
+      },
+      "depth_range_m_floor": {
+        "min": 143.00,
+        "max": 271.80
+      },
+      "geological_reserve_mt": 52.29,
+      "grade": "B - G"
+    }
+  ],
+
+  "total_geological_reserve_mt": 1400.65,
+
+  "source": {
+    "organization": "MSTC / Coal Block Summary",
+    "document": "Machhakata & Mahanadi Coal Block Summary",
+    "data_origin": "Geological Report data",
+    "note": "Seam-level values are reproduced from the published coal block summary. They are not model-generated estimates.",
+    "url": "https://mstcecommerce.com/auctionhome/coalblock/RenderFileCoalBlock.jsp?file=com-Machhakata-and-Mahanadi.pdf"
+  }
+}

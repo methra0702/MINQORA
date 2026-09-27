@@ -41,6 +41,10 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 # backend/data, beside main.py, or in the current working directory.
 # The first existing file is automatically selected.
 DATA_CANDIDATES = [
+    # Official Ministry of Coal dataset prepared by load_real_coal_data.py
+    os.path.abspath(os.path.join(BASE_DIR, "data", "coal_directory_2024_25_normalized_1000.csv")),
+    os.path.abspath(os.path.join(BASE_DIR, "data", "coal_directory_2024_25_1000_real_records.csv")),
+    # Existing MINQORA dataset kept as fallback
     os.path.abspath(os.path.join(BASE_DIR, "..", "data", "mining_data.csv")),
     os.path.abspath(os.path.join(BASE_DIR, "data", "mining_data.csv")),
     os.path.abspath(os.path.join(BASE_DIR, "mining_data.csv")),
@@ -121,383 +125,235 @@ def first_value(clean_row, exact_keys=(), contains_terms=()):
 # LOAD MINING DATA
 # ============================================================
 
-def load_mining_data():
+def _pick(clean_row, exact=(), contains=()):
+    """Pick the first non-empty value from a normalized official-data row."""
+    for key in exact:
+        value = clean_row.get(key)
+        if value is not None and str(value).strip():
+            return str(value).strip()
+    for key, value in clean_row.items():
+        if value is None or not str(value).strip():
+            continue
+        k = str(key).lower()
+        if contains and any(term in k for term in contains):
+            return str(value).strip()
+    return ""
 
+
+def _to_number(value):
+    if value is None:
+        return None
+    s = str(value).strip().replace(",", "").replace("%", "")
+    if not s or s in {"-", "—", "NA", "N/A", "nan", "None"}:
+        return None
+    # Keep only a simple numeric value; avoid converting text such as "2024-25".
+    m = re.search(r"-?\d+(?:\.\d+)?", s)
+    if not m:
+        return None
+    try:
+        return float(m.group(0))
+    except Exception:
+        return None
+
+
+def load_mining_data():
+    """
+    Load up to 1,000 official Ministry of Coal records when the normalized
+    Coal Directory file is present.
+
+    The normalized loader preserves provenance (chapter, sheet and source URL)
+    and does not invent missing geological values. Existing MINQORA data remains
+    a fallback if the official file is not present.
+    """
     records = []
 
-    # Re-check the candidate locations every time so the backend can
-    # find the dataset even when it is started from a different folder.
     global DATA_FILE
     DATA_FILE = find_mining_data_file()
 
     if not os.path.exists(DATA_FILE):
-
         print("DATA FILE NOT FOUND. Checked:")
         for candidate in DATA_CANDIDATES:
             print(" -", candidate)
-
         return records
 
     try:
-
-        with open(
-            DATA_FILE,
-            "r",
-            encoding="utf-8-sig",
-            newline=""
-        ) as file:
-
+        with open(DATA_FILE, "r", encoding="utf-8-sig", newline="") as file:
             sample = file.read(4096)
-
             file.seek(0)
 
             try:
-
-                dialect = csv.Sniffer().sniff(
-                    sample,
-                    delimiters=",;\t"
-                )
-
+                dialect = csv.Sniffer().sniff(sample, delimiters=",;\t")
             except Exception:
-
                 dialect = csv.excel
 
-            reader = csv.DictReader(
-                file,
-                dialect=dialect
-            )
+            reader = csv.DictReader(file, dialect=dialect)
 
             if not reader.fieldnames:
-
                 return []
 
-            for row in reader:
-
+            for index, row in enumerate(reader, start=1):
                 clean_row = {}
-
                 for key, value in row.items():
-
                     clean_key = normalize_key(key)
-
-                    clean_value = (
-                        str(value).strip()
-                        if value is not None
-                        else ""
+                    clean_row[clean_key] = (
+                        str(value).strip() if value is not None else ""
                     )
 
-                    clean_row[clean_key] = clean_value
-
-
-                # ============================================
-                # SUPPORT DIFFERENT COLUMN NAMES
-                # ============================================
-
-                mine = (
-                    clean_row.get("mine")
-                    or clean_row.get("mine_name")
-                    or ""
-                )
-
-                seam = (
-                    clean_row.get("seam")
-                    or clean_row.get("seam_name")
-                    or ""
-                )
-
-                year = (
-                    clean_row.get("year")
-                    or clean_row.get("record_year")
-                    or clean_row.get("observation_year")
-                    or ""
-                )
-
-                if not str(year).strip():
-                    date_candidate = (
-                        clean_row.get("date")
-                        or clean_row.get("record_date")
-                        or clean_row.get("observation_date")
-                        or ""
-                    )
-                    year_match = re.search(r"(20\d{2})", str(date_candidate))
-                    if year_match:
-                        year = year_match.group(1)
-
-                record_id = (
-                    clean_row.get("id")
-                    or clean_row.get("record_id")
-                    or clean_row.get("record_no")
-                    or ""
-                )
-
-                thickness = first_value(
+                # Official-data provenance
+                chapter = _pick(
                     clean_row,
-                    exact_keys=(
-                        "thickness_m",
-                        "seam_thickness_m",
-                        "thickness",
-                        "seam_thickness",
-                        "coal_seam_thickness",
-                        "seam_thickness_in_m",
-                        "thickness_in_m",
-                    ),
-                    contains_terms=("thickness",),
+                    exact=("source_chapter", "chapter")
                 )
-
-                production = first_value(
+                sheet = _pick(
                     clean_row,
-                    exact_keys=(
-                        "production_tonnes",
-                        "production_tonnes_year",
-                        "production",
-                        "output_tonnes",
-                        "output",
-                        "coal_production",
-                    ),
-                    contains_terms=("production",),
+                    exact=("source_sheet", "sheet", "table")
                 )
-
-                # ============================================
-                # HISTORICAL PREDICTION FIELDS
-                # ============================================
-
-                date = (
-                    clean_row.get("date")
-                    or clean_row.get("record_date")
-                    or clean_row.get("observation_date")
-                    or ""
-                )
-
-                depth = first_value(
+                source_url = _pick(
                     clean_row,
-                    exact_keys=(
-                        "depth_m",
-                        "mining_depth_m",
-                        "depth",
-                        "mining_depth",
-                        "depth_of_mining",
-                    ),
-                    contains_terms=("depth",),
+                    exact=("source_url", "source")
                 )
-
-                recovery = first_value(
+                table_title = _pick(
                     clean_row,
-                    exact_keys=(
-                        "recovery_pct",
-                        "recovery_percent",
-                        "recovery",
-                        "coal_recovery",
-                    ),
-                    contains_terms=("recovery",),
+                    exact=("table_title", "title", "table_name")
                 )
 
-                ash_content = first_value(
+                # Entity fields. Different Coal Directory chapters use
+                # different terminology, so support several official labels.
+                mine = _pick(
                     clean_row,
-                    exact_keys=(
-                        "ash_content",
-                        "ash_pct",
-                        "ash_percent",
-                        "ash",
-                        "coal_ash",
+                    exact=(
+                        "mine", "mine_name", "colliery", "colliery_name",
+                        "coal_mine", "coal_mine_name", "project",
+                        "project_name", "block", "block_name",
+                        "company", "company_name", "subsidiary"
                     ),
-                    contains_terms=("ash",),
+                    contains=("mine", "colliery", "project", "block", "company", "subsidiary")
                 )
 
-                moisture = first_value(
+                seam = _pick(
                     clean_row,
-                    exact_keys=(
-                        "moisture_pct",
-                        "moisture_percent",
-                        "moisture",
-                        "coal_moisture",
+                    exact=(
+                        "seam", "seam_name", "coal_seam", "coal_seam_name",
+                        "seam_grade", "grade", "coal_grade", "category"
                     ),
-                    contains_terms=("moisture",),
+                    contains=("seam", "grade", "category")
                 )
 
-                risk_level = (
-                    clean_row.get("risk_level")
-                    or clean_row.get("risk")
-                    or clean_row.get("risk_category")
-                    or ""
+                state = _pick(
+                    clean_row,
+                    exact=("state", "state_name")
                 )
 
-
-                # ============================================
-                # PHASE 5A — OPTIONAL RESOURCE FIELDS
-                # ============================================
-
-                area_m2 = (
-                    clean_row.get("area_m2")
-                    or clean_row.get("seam_area_m2")
-                    or clean_row.get("resource_area_m2")
-                    or clean_row.get("area")
-                    or ""
+                year_text = _pick(
+                    clean_row,
+                    exact=("year", "record_year", "observation_year", "financial_year")
                 )
+                year_match = re.search(r"(20\d{2})", year_text)
+                if not year_match:
+                    # Search the complete row for a four-digit year.
+                    for value in clean_row.values():
+                        match = re.search(r"\b(20\d{2})\b", str(value))
+                        if match:
+                            year_match = match
+                            break
+                year = int(year_match.group(1)) if year_match else None
 
-                area_ha = (
-                    clean_row.get("area_ha")
-                    or clean_row.get("area_hectares")
-                    or ""
-                )
+                # Common numeric mining fields. Missing values remain None.
+                thickness = _to_number(_pick(
+                    clean_row,
+                    exact=("thickness_m", "coal_thickness_m", "seam_thickness_m", "thickness"),
+                    contains=("thickness",)
+                ))
+                depth = _to_number(_pick(
+                    clean_row,
+                    exact=("depth_m", "mining_depth_m", "depth"),
+                    contains=("depth",)
+                ))
+                production = _to_number(_pick(
+                    clean_row,
+                    exact=("production_tonnes", "production", "output_tonnes", "output", "coal_production"),
+                    contains=("production", "output")
+                ))
+                recovery = _to_number(_pick(
+                    clean_row,
+                    exact=("recovery_pct", "recovery_percent", "recovery"),
+                    contains=("recovery",)
+                ))
+                ash = _to_number(_pick(
+                    clean_row,
+                    exact=("ash_content", "ash_pct", "ash_percent", "ash"),
+                    contains=("ash",)
+                ))
+                moisture = _to_number(_pick(
+                    clean_row,
+                    exact=("moisture_pct", "moisture_percent", "moisture"),
+                    contains=("moisture",)
+                ))
+                calorific = _to_number(_pick(
+                    clean_row,
+                    exact=(
+                        "calorific_value_kcal_kg", "calorific_value",
+                        "gcv", "gcv_kcal_kg"
+                    ),
+                    contains=("calorific", "gcv")
+                ))
 
-                length_m = (
-                    clean_row.get("length_m")
-                    or clean_row.get("seam_length_m")
-                    or ""
-                )
+                # Give every official row a useful display entity even when
+                # that particular table is not mine/seam based.
+                display_mine = mine or state or "Coal Directory"
+                display_seam = seam or table_title or sheet or "Official record"
 
-                width_m = (
-                    clean_row.get("width_m")
-                    or clean_row.get("seam_width_m")
-                    or ""
-                )
+                record_id = _pick(
+                    clean_row,
+                    exact=("record_id", "id", "record_no")
+                ) or str(index)
 
-                density = (
-                    clean_row.get("density_t_m3")
-                    or clean_row.get("coal_density")
-                    or clean_row.get("density")
-                    or ""
-                )
+                record = {
+                    "id": record_id,
+                    "mine": display_mine,
+                    "seam": display_seam,
+                    "year": year,
+                    "date": _pick(clean_row, exact=("date", "record_date", "observation_date")),
+                    "thickness_m": thickness,
+                    "depth_m": depth,
+                    "production_tonnes": production,
+                    "recovery": recovery,
+                    "ash_content": ash,
+                    "moisture": moisture,
+                    "calorific_value": calorific,
+                    "risk_level": _pick(clean_row, exact=("risk_level", "risk", "risk_category")),
+                    "state": state,
+                    "source": (
+                        f"Ministry of Coal — Coal Directory 2024-25"
+                        + (f" | Chapter {chapter}" if chapter else "")
+                        + (f" | {sheet}" if sheet else "")
+                    ),
+                    "source_chapter": chapter,
+                    "source_sheet": sheet,
+                    "source_url": source_url,
+                    "table_title": table_title,
+                    "record_type": "official_coal_directory"
+                }
 
-                recovery_factor = (
-                    clean_row.get("recovery_factor")
-                    or clean_row.get("recovery")
-                    or ""
-                )
+                # Preserve the complete normalized row so the UI/API can
+                # expose additional official fields without inventing values.
+                record["raw_fields"] = clean_row
 
+                records.append(record)
 
-                # ============================================
-                # CONVERT YEAR
-                # ============================================
-
-                try:
-
-                    year = int(float(year))
-
-                except Exception:
-
-                    year = None
-
-
-                # ============================================
-                # CONVERT THICKNESS
-                # ============================================
-
-                try:
-
-                    thickness = float(
-                        str(thickness)
-                        .replace(",", "")
-                    )
-
-                except Exception:
-
-                    thickness = None
-
-
-                # ============================================
-                # CONVERT PRODUCTION
-                # ============================================
-
-                try:
-
-                    production = float(
-                        str(production)
-                        .replace(",", "")
-                    )
-
-                except Exception:
-
-                    production = None
-
-
-                # ============================================
-                # CONVERT OPTIONAL RESOURCE FIELDS
-                # ============================================
-
-                def to_float(value):
-                    try:
-                        text = str(value).strip().replace(",", "")
-                        if text == "":
-                            return None
-                        return float(text)
-                    except Exception:
-                        return None
-
-                depth = to_float(depth)
-                recovery = to_float(recovery)
-                ash_content = to_float(ash_content)
-                moisture = to_float(moisture)
-
-                area_m2 = to_float(area_m2)
-                area_ha = to_float(area_ha)
-                length_m = to_float(length_m)
-                width_m = to_float(width_m)
-                density = to_float(density)
-                recovery_factor = to_float(recovery_factor)
-
-                if area_m2 is None and area_ha is not None:
-                    area_m2 = area_ha * 10000
-
-                if area_m2 is None and length_m is not None and width_m is not None:
-                    area_m2 = length_m * width_m
-
-                if recovery_factor is not None and recovery_factor > 1:
-                    recovery_factor = recovery_factor / 100
-
-
-                # ============================================
-                # SAVE VALID RECORD
-                # ============================================
-
-                if mine and seam:
-
-                    records.append({
-
-                        "id": record_id,
-
-                        "mine": mine,
-
-                        "seam": seam,
-
-                        "year": year,
-
-                        "date": date,
-
-                        "thickness_m": thickness,
-
-                        "depth_m": depth,
-
-                        "production_tonnes": production,
-
-                        "recovery": recovery,
-
-                        "ash_content": ash_content,
-
-                        "moisture": moisture,
-
-                        "risk_level": risk_level,
-
-                        # Phase 5A optional resource-estimation inputs
-                        "area_m2": area_m2,
-                        "density_t_m3": density,
-                        "recovery_factor": recovery_factor
-
-                    })
-
+                if len(records) >= 1000:
+                    break
 
         print("=" * 55)
         print("MINQORA DATA LOADED")
-        print("File:", DATA_FILE)
+        print("Official source file:", DATA_FILE)
         print("Records:", len(records))
         print("=" * 55)
 
         return records
 
-
     except Exception as error:
-
         print("ERROR LOADING DATA:", error)
-
         return []
 
 
@@ -727,6 +583,264 @@ def build_evidence(records, limit=10):
         })
 
     return evidence
+
+
+
+
+# ============================================================
+# BRAIN 1 — GENERAL NATURAL-LANGUAGE QUERY LAYER
+# ============================================================
+
+FIELD_ALIASES = {
+    "production": ["production", "output", "coal production", "production tonnes", "tonnes produced"],
+    "thickness": ["coal thickness", "seam thickness", "thickness", "seam thick"],
+    "depth": ["depth", "seam depth", "burial depth", "depth below surface"],
+    "recovery": ["recovery", "recovery percent", "recovery percentage", "yield"],
+    "ash": ["ash content", "ash", "ash percent", "ash percentage"],
+    "moisture": ["moisture content", "moisture", "moisture percent", "moisture percentage"],
+    "calorific": ["calorific value", "calorific", "gcv", "heating value"],
+}
+
+FIELD_LABELS = {
+    "production": "Production (tonnes)", "thickness": "Coal / Seam Thickness (m)",
+    "depth": "Depth (m)", "recovery": "Recovery (%)", "ash": "Ash Content (%)",
+    "moisture": "Moisture (%)", "calorific": "Calorific Value (kcal/kg)"
+}
+
+
+def _numeric_value(record, field):
+    aliases = {
+        "production": ["production_tonnes", "production", "output"],
+        "thickness": ["thickness_m", "coal_thickness_m", "thickness"],
+        "depth": ["depth_m", "depth"],
+        "recovery": ["recovery", "recovery_percent", "recovery_pct"],
+        "ash": ["ash_content", "ash_percent", "ash_pct", "ash"],
+        "moisture": ["moisture", "moisture_percent", "moisture_pct"],
+        "calorific": ["calorific_value_kcal_kg", "calorific_value", "gcv"]
+    }
+    for key in aliases.get(field, []):
+        value = record.get(key)
+        if value is not None and str(value).strip() != "":
+            try:
+                return float(str(value).replace(",", ""))
+            except (TypeError, ValueError):
+                pass
+    return None
+
+
+def _detect_fields(question):
+    q = question.lower()
+    found = []
+    for field, aliases in FIELD_ALIASES.items():
+        if any(re.search(r"\b" + re.escape(alias) + r"\b", q) for alias in aliases):
+            found.append(field)
+    return found
+
+
+def _extract_conditions(question):
+    """Extract one or more numeric conditions from ordinary natural language."""
+    q = question.lower().replace(",", "")
+    conditions = []
+    number = r"(\d+(?:\.\d+)?)\s*(?:%|percent|percentage)?"
+    field_patterns = {
+        field: r"(?:" + "|".join(re.escape(a) for a in aliases) + r")"
+        for field, aliases in FIELD_ALIASES.items()
+    }
+
+    for field, fp in field_patterns.items():
+        # field between 20 and 30 / between 20 and 30 ash
+        patterns = [
+            rf"{fp}.*?between\s+{number}\s+(?:and|to|-)\s+{number}",
+            rf"between\s+{number}\s+(?:and|to|-)\s+{number}.*?{fp}",
+            rf"{fp}.*?from\s+{number}\s+(?:to|and|-)\s+{number}",
+            rf"from\s+{number}\s+(?:to|and|-)\s+{number}.*?{fp}",
+        ]
+        matched = None
+        for pat in patterns:
+            m = re.search(pat, q)
+            if m:
+                matched = m
+                break
+        if matched:
+            a, b = float(matched.group(1)), float(matched.group(2))
+            conditions.append({"field": field, "operator": "between", "low": min(a,b), "high": max(a,b)})
+            continue
+
+        comparisons = [
+            ("gte", rf"(?:at least|greater than or equal to|minimum of|no less than|>=)\s*{number}"),
+            ("gt", rf"(?:greater than|more than|above|over|exceeding|>)\s*{number}"),
+            ("lte", rf"(?:at most|less than or equal to|maximum of|no more than|<=)\s*{number}"),
+            ("lt", rf"(?:less than|below|under|fewer than|<)\s*{number}"),
+        ]
+        for op, cp in comparisons:
+            for pat in [rf"{fp}.*?{cp}", rf"{cp}.*?{fp}"]:
+                m = re.search(pat, q)
+                if m:
+                    conditions.append({"field": field, "operator": op, "value": float(m.group(1))})
+                    break
+            if conditions and conditions[-1].get("field") == field:
+                break
+
+    return conditions
+
+
+def _detect_operation(question):
+    q = question.lower()
+    if re.search(r"\b(top|highest|maximum|max|largest|greatest|thickest|deepest|most)\b", q): return "max"
+    if re.search(r"\b(bottom|lowest|minimum|min|smallest|least|thinnest|shallowest)\b", q): return "min"
+    if re.search(r"\b(average|avg|mean)\b", q): return "average"
+    if re.search(r"\b(total|sum|combined|overall)\b", q): return "sum"
+    if re.search(r"\b(how many|number of|count|count of)\b", q): return "count"
+    if re.search(r"\b(compare|comparison|versus|vs\.?|difference between)\b", q): return "compare"
+    if re.search(r"\b(trend|over time|changed|change|growth|decline|increase|decrease)\b", q): return "trend"
+    if re.search(r"\b(show|list|find|which|what records|records with|give me|display)\b", q): return "list"
+    return "summary"
+
+
+def _detect_requested_entity(question):
+    q = question.lower()
+    if re.search(r"\b(record|records|row|rows|entries|entry)\b", q): return "records"
+    if re.search(r"\b(seam|seams)\b", q): return "seams"
+    if re.search(r"\b(mine|mines|block|blocks)\b", q): return "mines"
+    return "records"
+
+
+def _matches_condition(record, condition):
+    value = _numeric_value(record, condition["field"])
+    if value is None: return False
+    op = condition["operator"]
+    if op == "between": return condition["low"] <= value <= condition["high"]
+    if op == "gt": return value > condition["value"]
+    if op == "gte": return value >= condition["value"]
+    if op == "lt": return value < condition["value"]
+    if op == "lte": return value <= condition["value"]
+    return False
+
+
+def analyze_smart_query(question, records):
+    """General deterministic NL layer. Returns None when the request is better handled by a specialized engine."""
+    q = question.lower().strip()
+    fields = _detect_fields(question)
+    conditions = _extract_conditions(question)
+
+    # Infer the metric from natural superlative wording.
+    implicit_metric_aliases = [
+        ("depth", r"\b(deepest|deepest record|deepest seam|greatest depth|max depth)\b"),
+        ("thickness", r"\b(thickest|thickest seam|greatest thickness|max thickness|thinnest|thinnest seam)\b"),
+        ("production", r"\b(highest production|maximum production|most production|lowest production|minimum production)\b"),
+        ("recovery", r"\b(highest recovery|best recovery|lowest recovery|worst recovery)\b"),
+        ("ash", r"\b(highest ash|lowest ash|most ash|least ash)\b"),
+        ("moisture", r"\b(highest moisture|lowest moisture|most moisture|least moisture)\b"),
+        ("calorific", r"\b(highest calorific|highest gcv|lowest calorific|lowest gcv)\b"),
+    ]
+    for implicit_field, pattern in implicit_metric_aliases:
+        if re.search(pattern, q):
+            if implicit_field not in fields:
+                fields.insert(0, implicit_field)
+            break
+
+    # Specialized domains keep priority over the generic table query engine.
+    specialized_terms = [
+        "resource scenario", "sensitivity analysis", "resource risk", "resource report",
+        "resource classification", "resource estimation", "confidence analysis",
+        "integrated geological model", "geological risk", "mine design", "generate report",
+        "production forecast", "predict production", "forecast production"
+    ]
+    if any(term in q for term in specialized_terms):
+        return None
+    if not fields and not conditions:
+        return None
+
+    mine = find_mine(question, records)
+    start_year, end_year = find_year_range(question, records)
+    base = filter_records(records, mine, start_year, end_year)
+    if not base:
+        return {"answer": f"No records found for {mine or 'the requested scope'} in {start_year}-{end_year}.", "evidence": [], "records_matched": 0}
+
+    # Apply every detected condition, so questions can contain AND-style constraints.
+    matched = [r for r in base if all(_matches_condition(r, c) for c in conditions)] if conditions else base[:]
+    operation = _detect_operation(question)
+    entity = _detect_requested_entity(question)
+    metric = fields[0] if fields else (conditions[0]["field"] if conditions else "production")
+
+    # For "which mines" group records by mine. For seams, group by mine+seam.
+    if operation == "list":
+        rows = []
+        seen = set()
+        if entity == "mines":
+            for r in matched:
+                name = r.get("mine") or r.get("mine_name") or "Unknown"
+                if name not in seen:
+                    seen.add(name); rows.append(name)
+            body = "\n".join(f"• {x}" for x in sorted(rows)) or "No matching mines."
+            answer = f"🔎 MINQORA QUERY\n\nMatching mines: {len(rows)}\n{body}"
+        else:
+            for r in matched[:30]:
+                value = _numeric_value(r, metric)
+                value_text = f" | {FIELD_LABELS[metric]}: {value:g}" if value is not None else ""
+                rows.append(f"• {r.get('mine') or r.get('mine_name') or 'Unknown'} | {r.get('seam') or r.get('seam_name') or 'N/A'} | Year {r.get('year','N/A')}{value_text}")
+            more = f"\nShowing first 30 of {len(matched)} matches." if len(matched) > 30 else ""
+            answer = f"🔎 MINQORA QUERY\n\nMatching records: {len(matched)}\n" + ("\n".join(rows) or "No matching records.") + more
+    elif operation in ("max", "min"):
+        usable = [(r, _numeric_value(r, metric)) for r in matched]
+        usable = [(r,v) for r,v in usable if v is not None]
+        if not usable: return {"answer": f"I found the requested records, but no usable {FIELD_LABELS[metric]} values are available.", "evidence": build_evidence(matched)}
+        r, value = (max if operation == "max" else min)(usable, key=lambda x: x[1])
+        answer = f"📊 {FIELD_LABELS[metric]} — {'HIGHEST' if operation == 'max' else 'LOWEST'}\n\n{value:,.2f}\n\nMine: {r.get('mine') or r.get('mine_name') or 'N/A'}\nSeam: {r.get('seam') or r.get('seam_name') or 'N/A'}\nYear: {r.get('year','N/A')}"
+    elif operation in ("average", "sum", "count"):
+        values = [v for r in matched if (v := _numeric_value(r, metric)) is not None]
+        if operation == "count":
+            answer = f"🔢 COUNT\n\n{len(matched)} matching records."
+        elif not values:
+            answer = f"No usable {FIELD_LABELS[metric]} values are available in the matching records."
+        else:
+            val = sum(values)/len(values) if operation == "average" else sum(values)
+            label = "Average" if operation == "average" else "Total"
+            answer = f"📊 {label} {FIELD_LABELS[metric]}\n\n{val:,.2f}\n\nBased on {len(values)} records."
+    elif operation == "trend":
+        by_year = defaultdict(list)
+        for r in matched:
+            v = _numeric_value(r, metric)
+            if v is not None and r.get("year") is not None: by_year[int(r["year"])].append(v)
+        if len(by_year) < 2:
+            answer = "I need at least two years of usable data to calculate a trend."
+        else:
+            series = [(y, sum(vs)/len(vs)) for y,vs in sorted(by_year.items())]
+            first_y, first_v = series[0]; last_y, last_v = series[-1]
+            change = last_v-first_v
+            pct = (change/first_v*100) if first_v else 0
+            direction = "increased" if change > 0 else "decreased" if change < 0 else "remained stable"
+            lines = "\n".join(f"• {y}: {v:,.2f}" for y,v in series)
+            answer = f"📈 TREND — {FIELD_LABELS[metric]}\n\n{lines}\n\nFrom {first_y} to {last_y}, the average {FIELD_LABELS[metric].lower()} {direction} by {abs(change):,.2f} ({abs(pct):.2f}%)."
+    elif operation == "compare":
+        groups = defaultdict(list)
+        for r in matched:
+            name = r.get("mine") or r.get("mine_name") or "Unknown"
+            v = _numeric_value(r, metric)
+            if v is not None: groups[name].append(v)
+        lines = [f"• {name}: {sum(vs)/len(vs):,.2f}" for name,vs in sorted(groups.items())]
+        answer = f"⚖️ MINE COMPARISON — {FIELD_LABELS[metric]}\n\n" + ("\n".join(lines) or "No comparable values found.")
+    else:
+        values = [_numeric_value(r, metric) for r in matched]
+        values = [v for v in values if v is not None]
+        if values:
+            answer = f"📊 {FIELD_LABELS[metric]} SUMMARY\n\nRecords: {len(matched)}\nAverage: {sum(values)/len(values):,.2f}\nMinimum: {min(values):,.2f}\nMaximum: {max(values):,.2f}"
+        else:
+            answer = f"I found {len(matched)} matching records, but the requested metric has no usable numeric values."
+
+    condition_text = []
+    for c in conditions:
+        if c["operator"] == "between": condition_text.append(f"{FIELD_LABELS[c['field']]} between {c['low']:g} and {c['high']:g}")
+        else: condition_text.append(f"{FIELD_LABELS[c['field']]} { {'gt':'>','gte':'>=','lt':'<','lte':'<='}[c['operator']] } {c['value']:g}")
+    scope = f"Mine: {mine or 'All Mines'} | Period: {start_year}-{end_year}"
+    answer += f"\n\nScope: {scope}"
+    if condition_text: answer += "\nConditions: " + " AND ".join(condition_text)
+    return {"answer": answer, "evidence": build_evidence(matched, limit=10), "records_matched": len(matched), "operation": operation, "metric": metric, "conditions": conditions}
+
+
+# Backward-compatible name used by the earlier smart-query implementation.
+def analyze_numeric_condition(question, records):
+    return analyze_smart_query(question, records)
 
 
 # ============================================================
@@ -4264,6 +4378,77 @@ def mining_data():
 
 @app.post("/ask")
 
+def fallback_data_answer(question, records):
+    """Last-resort answer from the dataset; never show the old capability dump."""
+    q = question.lower().strip()
+    semantic = {
+        "depth": ["deep", "deepest", "goes deepest", "farthest down", "furthest down", "burial depth"],
+        "thickness": ["thick", "thickest", "thinner", "thinnest", "seam thickness", "coal thickness"],
+        "production": ["production", "output", "produce", "produces", "tonnage", "tonnes produced", "most coal", "least coal"],
+        "recovery": ["recovery", "recover", "yield"],
+        "ash": ["ash", "ash content", "impurity"],
+        "moisture": ["moisture", "water content"],
+        "calorific": ["calorific", "gcv", "heating value", "energy value"],
+    }
+    metric = next((field for field, aliases in semantic.items() if any(a in q for a in aliases)), None)
+    is_max = any(x in q for x in ["deepest", "thickest", "highest", "greatest", "maximum", "max", "most", "largest", "best", "goes deepest", "farthest down"])
+    is_min = any(x in q for x in ["shallowest", "thinnest", "lowest", "least", "minimum", "min", "smallest", "worst"])
+
+    if metric and (is_max or is_min):
+        usable = [(r, _numeric_value(r, metric)) for r in records]
+        usable = [(r, v) for r, v in usable if v is not None]
+        if usable:
+            if is_max and not is_min:
+                r, value = max(usable, key=lambda x: x[1])
+                direction = "highest"
+                operation = "max"
+            else:
+                r, value = min(usable, key=lambda x: x[1])
+                direction = "lowest"
+                operation = "min"
+            return {
+                "answer": (
+                    f"📊 {FIELD_LABELS[metric]} — {direction.upper()}\n\n"
+                    f"{value:,.2f}\n\n"
+                    f"Mine: {r.get('mine') or r.get('mine_name') or 'N/A'}\n"
+                    f"Seam: {r.get('seam') or r.get('seam_name') or 'N/A'}\n"
+                    f"Year: {r.get('year', 'N/A')}\n\n"
+                    f"Computed from {len(usable)} records in the available dataset."
+                ),
+                "evidence": build_evidence([r], limit=1),
+                "records_matched": len(usable),
+                "operation": operation,
+                "metric": metric,
+            }
+
+    if metric:
+        values = [_numeric_value(r, metric) for r in records]
+        values = [v for v in values if v is not None]
+        if values:
+            return {
+                "answer": (
+                    f"📊 {FIELD_LABELS[metric]} SUMMARY\n\n"
+                    f"Records analyzed: {len(values)}\n"
+                    f"Average: {sum(values)/len(values):,.2f}\n"
+                    f"Minimum: {min(values):,.2f}\n"
+                    f"Maximum: {max(values):,.2f}"
+                ),
+                "evidence": build_evidence(records[:10], limit=10),
+                "records_matched": len(values),
+                "metric": metric,
+            }
+
+    return {
+        "answer": (
+            "I could not reliably map that question to a field in the current mining dataset. "
+            "Please specify the subject such as depth, thickness, production, recovery, ash, "
+            "moisture, calorific value, seam, mine, or year."
+        ),
+        "evidence": build_evidence(records, limit=5),
+        "records_matched": 0,
+    }
+
+
 def ask_question(request: AskRequest):
 
     question = request.question.strip()
@@ -4292,23 +4477,42 @@ def ask_question(request: AskRequest):
 
 
     # ========================================================
-    # UNDERSTAND QUESTION
+    # BRAIN 1 GENERAL NATURAL-LANGUAGE UNDERSTANDING
     # ========================================================
 
-    intent_data = understand_question(
-        question
-    )
+    smart_result = analyze_smart_query(question, records)
+    if smart_result is not None:
+        result = smart_result
+        intent_data = {
+            "intent": "natural_language_query",
+            "source": "MINQORA Brain 1 Natural-Language Query Layer",
+            "confidence": 97,
+        }
+        intent = "natural_language_query"
+    else:
+        # Specialized MINQORA engines remain available for advanced requests.
+        intent_data = understand_question(question)
+        intent = intent_data["intent"]
 
 
-    intent = intent_data["intent"]
 
+
+    # ========================================================
+    # CONDITIONAL QUERY RESULT
+    # ========================================================
+
+    if intent == "natural_language_query":
+        pass
+
+    elif intent == "conditional_data_query":
+        pass
 
     # ========================================================
     # PHASE 4E
     # INTEGRATED GEOLOGICAL MODEL
     # ========================================================
 
-    if intent == "mine_design_foundation":
+    elif intent == "mine_design_foundation":
 
         result = generate_mine_design_foundation(
             question,
@@ -4455,8 +4659,8 @@ def ask_question(request: AskRequest):
 
     else:
 
-        result = general_response(
-            records
+        result = fallback_data_answer(
+            question, records
         )
 
 
@@ -4666,6 +4870,18 @@ def resource_scenarios(mine: str = None, start_year: int = None, end_year: int =
 @app.get("/resource-risk")
 def resource_risk(mine: str = None, start_year: int = None, end_year: int = None):
     return resource_scenarios(mine, start_year, end_year)
+
+
+
+
+# ============================================================
+# BRAIN 1 ASK ENDPOINT
+# ============================================================
+
+@app.post("/brain1/ask")
+def brain1_ask(request: AskRequest):
+    """Brain 1 compatibility endpoint using the existing intelligence engine."""
+    return ask_question(request)
 
 
 # ============================================================
@@ -5295,3 +5511,95 @@ def mine_design_foundation(mine: str = None, start_year: int = None, end_year: i
 @app.get("/mine-design")
 def mine_design(mine: str = None, start_year: int = None, end_year: int = None):
     return mine_design_foundation(mine, start_year, end_year)
+
+    # ============================================================
+# SPATIAL DATA
+# ============================================================
+
+@app.get("/spatial-data")
+def get_spatial_data():
+    import csv
+
+    csv_path = os.path.join(BASE_DIR, "..", "data", "mining_data.csv")
+
+    points = []
+
+    try:
+        with open(csv_path, "r", encoding="utf-8-sig", newline="") as file:
+            reader = csv.DictReader(file)
+
+            for row in reader:
+                latitude = row.get("latitude")
+                longitude = row.get("longitude")
+                elevation = row.get("elevation_m")
+
+                if latitude and longitude:
+                    points.append({
+                        "latitude": float(latitude),
+                        "longitude": float(longitude),
+                        "elevation_m": float(elevation) if elevation else None,
+                        "mine": row.get("mine_name", ""),
+                        "seam": row.get("seam", ""),
+                    })
+
+        return {
+            "status": "available",
+            "count": len(points),
+            "data": points,
+        }
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Could not load spatial data: {str(e)}"
+        )
+
+        # ============================================================
+# DTM DATA
+# ============================================================
+
+@app.get("/dtm")
+def get_dtm_status():
+    dtm_path = os.path.join(
+        BASE_DIR,
+        "..",
+        "frontend",
+        "public",
+        "data",
+        "mckinley",
+        "dtm_I_11.tif"
+    )
+
+    if os.path.exists(dtm_path):
+        return {
+            "status": "available",
+            "file": "dtm_I_11.tif",
+            "source": "McKinley Mine DTM"
+        }
+
+    return {
+        "status": "not_available"
+    }
+
+@app.get("/dtm-data")
+def get_dtm_data():
+    dtm_path = os.path.join(
+        BASE_DIR,
+        "..",
+        "frontend",
+        "public",
+        "data",
+        "mckinley",
+        "dtm_I_11.tif"
+    )
+
+    if os.path.exists(dtm_path):
+        return {
+            "status": "success",
+            "file": "dtm_I_11.tif",
+            "source": "McKinley Mine DTM"
+        }
+
+    return {
+        "status": "not_available"
+    }

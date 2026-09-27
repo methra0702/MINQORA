@@ -1,6 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 
-const API_URL = "http://127.0.0.1:8000";
+const API_URL = "http://127.0.0.1:8002";
+
+// MINQORA planning assumptions used only for scenario calculations.
+const PLANNING_STRIPPING_RATIO = 2.75;
+const PLANNING_RECOVERY_PERCENT = 85;
+const PLANNING_OB_DENSITY_T_PER_M3 = 2.2;
 
 /* ============================================================
    NUMBER FORMATTER
@@ -624,15 +629,15 @@ function MineDesignOptimization() {
      ========================================================== */
 
   const [inputs, setInputs] = useState({
-    miningArea: 2500000,
-    seamThickness: 4.2,
-    miningDepth: 120,
+    miningArea: 0,
+    seamThickness: 0,
+    miningDepth: 0,
     benchHeight: 10,
     benchWidth: 25,
-    productionTarget: 1500000,
+    productionTarget: 0,
     workingDays: 300,
-    recoveryFactor: 80,
-    overburden: 30,
+    recoveryFactor: 0,
+    overburden: 0,
   });
 
   /* ==========================================================
@@ -642,8 +647,8 @@ function MineDesignOptimization() {
   const [optimization, setOptimization] = useState({
     benchHeight: 8,
     benchWidth: 30,
-    productionTarget: 1650000,
-    recoveryFactor: 84,
+    productionTarget: 0,
+    recoveryFactor: PLANNING_RECOVERY_PERCENT,
   });
 
   /* ==========================================================
@@ -679,27 +684,173 @@ function MineDesignOptimization() {
      ========================================================== */
 
   useEffect(() => {
-    async function loadMiningData() {
+    async function loadCMPDIData() {
       try {
         setLoadingData(true);
 
         const response = await fetch(
-          `${API_URL}/mining-data`
+          `${API_URL}/cmpdi/multi-mine/all`
         );
 
         if (!response.ok) {
           throw new Error(
-            `Server returned ${response.status}`
+            `CMPDI server returned ${response.status}`
           );
         }
 
         const data = await response.json();
 
-        const loadedRecords = Array.isArray(data)
+        const loadedMines = Array.isArray(data?.mines)
+          ? data.mines
+          : Array.isArray(data)
           ? data
-          : Array.isArray(data.records)
-          ? data.records
           : [];
+
+        /*
+         * Convert the source-traceable CMPDI mine package into the
+         * lightweight records expected by the existing design UI.
+         *
+         * IMPORTANT:
+         * - We only map values that actually exist in the CMPDI package.
+         * - We do not invent production, recovery, haulage, density,
+         *   coordinates or other engineering measurements.
+         * - Seam-level thickness/depth values are preserved as ranges
+         *   where available.
+         */
+        const loadedRecords = [];
+
+        loadedMines.forEach((mineRecord) => {
+          const mineName =
+            mineRecord.name ??
+            mineRecord.mine ??
+            mineRecord.mine_name ??
+            "Unknown Mine";
+
+          const seams = Array.isArray(mineRecord.seams)
+            ? mineRecord.seams
+            : Array.isArray(mineRecord.seam_data)
+            ? mineRecord.seam_data
+            : [];
+
+          if (seams.length) {
+            seams.forEach((seamRecord, index) => {
+              const thicknessMin = Number(
+                seamRecord.thickness_min_m ??
+                seamRecord.thicknessMinM ??
+                seamRecord.thickness_min ??
+                NaN
+              );
+
+              const thicknessMax = Number(
+                seamRecord.thickness_max_m ??
+                seamRecord.thicknessMaxM ??
+                seamRecord.thickness_max ??
+                NaN
+              );
+
+              const depthMin = Number(
+                seamRecord.depth_min_m ??
+                seamRecord.depthMinM ??
+                seamRecord.depth_min ??
+                NaN
+              );
+
+              const depthMax = Number(
+                seamRecord.depth_max_m ??
+                seamRecord.depthMaxM ??
+                seamRecord.depth_max ??
+                NaN
+              );
+
+              const thickness =
+                Number.isFinite(thicknessMin) &&
+                Number.isFinite(thicknessMax)
+                  ? (thicknessMin + thicknessMax) / 2
+                  : Number.isFinite(thicknessMin)
+                  ? thicknessMin
+                  : Number.isFinite(thicknessMax)
+                  ? thicknessMax
+                  : null;
+
+              const depth =
+                Number.isFinite(depthMin) &&
+                Number.isFinite(depthMax)
+                  ? (depthMin + depthMax) / 2
+                  : Number.isFinite(depthMin)
+                  ? depthMin
+                  : Number.isFinite(depthMax)
+                  ? depthMax
+                  : null;
+
+              loadedRecords.push({
+                id: `${mineName}-seam-${index + 1}`,
+                mine_name: mineName,
+                prc_mtpa: Number.isFinite(Number(mineRecord?.block?.prc_mtpa))
+                  ? Number(mineRecord.block.prc_mtpa)
+                  : null,
+                area_km2: Number.isFinite(Number(mineRecord?.block?.area_km2))
+                  ? Number(mineRecord.block.area_km2)
+                  : null,
+                geological_resource_mt: Number.isFinite(Number(mineRecord?.block?.geological_resource_mt))
+                  ? Number(mineRecord.block.geological_resource_mt)
+                  : null,
+                grade: mineRecord?.block?.grade ?? null,
+                seam:
+                  seamRecord.seam ??
+                  seamRecord.name ??
+                  seamRecord.seam_name ??
+                  `Seam ${index + 1}`,
+                thickness,
+                thickness_min_m: Number.isFinite(thicknessMin)
+                  ? thicknessMin
+                  : null,
+                thickness_max_m: Number.isFinite(thicknessMax)
+                  ? thicknessMax
+                  : null,
+                depth,
+                depth_min_m: Number.isFinite(depthMin)
+                  ? depthMin
+                  : null,
+                depth_max_m: Number.isFinite(depthMax)
+                  ? depthMax
+                  : null,
+                source_id:
+                  seamRecord.source_id ??
+                  mineRecord.source_id ??
+                  null,
+                source_year:
+                  seamRecord.year ??
+                  seamRecord.source_year ??
+                  mineRecord.year ??
+                  null,
+              });
+            });
+          } else {
+            /*
+             * Keep mines without public seam-level data selectable.
+             * Geological/design fields remain null rather than fabricated.
+             */
+            loadedRecords.push({
+              id: `${mineName}-mine`,
+              mine_name: mineName,
+              prc_mtpa: Number.isFinite(Number(mineRecord?.block?.prc_mtpa))
+                ? Number(mineRecord.block.prc_mtpa)
+                : null,
+              area_km2: Number.isFinite(Number(mineRecord?.block?.area_km2))
+                ? Number(mineRecord.block.area_km2)
+                : null,
+              geological_resource_mt: Number.isFinite(Number(mineRecord?.block?.geological_resource_mt))
+                ? Number(mineRecord.block.geological_resource_mt)
+                : null,
+              grade: mineRecord?.block?.grade ?? null,
+              seam: "Mine-level data",
+              thickness: null,
+              depth: null,
+              source_id: mineRecord.source_id ?? null,
+              source_year: mineRecord.year ?? null,
+            });
+          }
+        });
 
         setRecords(loadedRecords);
         setDataError("");
@@ -707,14 +858,14 @@ function MineDesignOptimization() {
         console.error(error);
 
         setDataError(
-          "Mining data could not be loaded. Manual planning inputs remain available."
+          "Real CMPDI data could not be loaded. Manual planning inputs remain available."
         );
       } finally {
         setLoadingData(false);
       }
     }
 
-    loadMiningData();
+    loadCMPDIData();
   }, []);
 
   /* ==========================================================
@@ -816,6 +967,10 @@ function MineDesignOptimization() {
         count: 0,
         averageThickness: null,
         averageDepth: null,
+        prcMtpa: null,
+        areaKm2: null,
+        resourceMt: null,
+        grade: null,
       };
     }
 
@@ -852,12 +1007,40 @@ function MineDesignOptimization() {
           ) / values.length
         : null;
 
+    const firstWithCapacity =
+      selectedRecords.find((record) =>
+        Number.isFinite(Number(record.prc_mtpa)) &&
+        Number(record.prc_mtpa) > 0
+      );
+
+    const firstWithArea =
+      selectedRecords.find((record) =>
+        Number.isFinite(Number(record.area_km2)) &&
+        Number(record.area_km2) > 0
+      );
+
+    const firstWithResource =
+      selectedRecords.find((record) =>
+        Number.isFinite(Number(record.geological_resource_mt)) &&
+        Number(record.geological_resource_mt) > 0
+      );
+
     return {
       count: selectedRecords.length,
       averageThickness:
         average(thicknessValues),
       averageDepth:
         average(depthValues),
+      prcMtpa: firstWithCapacity
+        ? Number(firstWithCapacity.prc_mtpa)
+        : null,
+      areaKm2: firstWithArea
+        ? Number(firstWithArea.area_km2)
+        : null,
+      resourceMt: firstWithResource
+        ? Number(firstWithResource.geological_resource_mt)
+        : null,
+      grade: selectedRecords.find((record) => record.grade)?.grade ?? null,
     };
   }, [selectedRecords]);
 
@@ -887,8 +1070,12 @@ function MineDesignOptimization() {
     const recovery =
       Number(values.recoveryFactor) || 0;
 
-    const overburden =
-      Number(values.overburden) || 0;
+    const overburdenValue =
+      Number(values.overburden);
+
+    const hasOverburden =
+      Number.isFinite(overburdenValue) &&
+      overburdenValue > 0;
 
     const benchCount =
       benchHeight > 0
@@ -909,9 +1096,11 @@ function MineDesignOptimization() {
       (recovery / 100);
 
     const strippingRatio =
-      thickness > 0
-        ? overburden / thickness
-        : 0;
+      hasOverburden && thickness > 0
+        ? overburdenValue / thickness
+        : thickness > 0
+        ? PLANNING_STRIPPING_RATIO
+        : null;
 
     return {
       benchCount,
@@ -1151,8 +1340,10 @@ function MineDesignOptimization() {
     baseScenario.benchCount;
 
   const strippingChange =
-    optimizedScenario.strippingRatio -
-    baseScenario.strippingRatio;
+    optimizedScenario.strippingRatio != null &&
+    baseScenario.strippingRatio != null
+      ? optimizedScenario.strippingRatio - baseScenario.strippingRatio
+      : null;
 
   /* ==========================================================
      SCHEDULE
@@ -1509,98 +1700,65 @@ function MineDesignOptimization() {
   const materialTracking =
     useMemo(() => {
       const strippingRatio =
-        Math.max(
-          0,
-          Number(
-            baseScenario.strippingRatio
-          ) || 0
-        );
+        baseScenario.strippingRatio;
 
       let cumulativeCoal = 0;
       let cumulativeWaste = 0;
       let cumulativeMaterial = 0;
 
       const rows =
-        schedule.rows.map(
-          (row) => {
-            const coal =
-              Math.max(
-                0,
-                row.targetProduction
-              );
+        schedule.rows.map((row) => {
+          const coal = Math.max(0, row.targetProduction);
+          const wasteVolumeM3 = strippingRatio != null
+            ? coal * strippingRatio
+            : null;
+          const waste = wasteVolumeM3 != null
+            ? wasteVolumeM3 * PLANNING_OB_DENSITY_T_PER_M3
+            : null;
+          const totalMaterial = waste != null
+            ? coal + waste
+            : null;
 
-            const waste =
-              coal *
-              strippingRatio;
+          cumulativeCoal += coal;
 
-            const totalMaterial =
-              coal + waste;
+          if (waste != null) cumulativeWaste += waste;
+          if (totalMaterial != null) cumulativeMaterial += totalMaterial;
 
-            cumulativeCoal +=
-              coal;
+          return {
+            ...row,
+            coal,
+            waste,
+            wasteVolumeM3,
+            totalMaterial,
+            cumulativeCoal,
+            cumulativeWaste: waste != null ? cumulativeWaste : null,
+            cumulativeMaterial: totalMaterial != null ? cumulativeMaterial : null,
+            strippingRatio: coal > 0 && waste != null
+              ? waste / coal
+              : null,
+          };
+        });
 
-            cumulativeWaste +=
-              waste;
-
-            cumulativeMaterial +=
-              totalMaterial;
-
-            return {
-              ...row,
-              coal,
-              waste,
-              totalMaterial,
-              cumulativeCoal,
-              cumulativeWaste,
-              cumulativeMaterial,
-              strippingRatio:
-                coal > 0
-                  ? waste / coal
-                  : 0,
-            };
-          }
-        );
-
-      const annualCoal =
-        rows.reduce(
-          (sum, row) =>
-            sum + row.coal,
-          0
-        );
-
-      const annualWaste =
-        rows.reduce(
-          (sum, row) =>
-            sum + row.waste,
-          0
-        );
-
-      const annualMaterial =
-        rows.reduce(
-          (sum, row) =>
-            sum +
-            row.totalMaterial,
-          0
-        );
+      const annualCoal = rows.reduce((sum, row) => sum + row.coal, 0);
+      const hasWaste = strippingRatio != null;
+      const annualWaste = hasWaste
+        ? rows.reduce((sum, row) => sum + (row.waste || 0), 0)
+        : null;
+      const annualMaterial = hasWaste
+        ? rows.reduce((sum, row) => sum + (row.totalMaterial || 0), 0)
+        : null;
 
       return {
         rows,
         annualCoal,
         annualWaste,
         annualMaterial,
-        coalPercent:
-          annualMaterial > 0
-            ? (annualCoal /
-                annualMaterial) *
-              100
-            : 0,
-        wastePercent:
-          annualMaterial > 0
-            ? (annualWaste /
-                annualMaterial) *
-              100
-            : 0,
+        coalPercent: annualMaterial > 0 ? (annualCoal / annualMaterial) * 100 : null,
+        wastePercent: annualMaterial > 0 ? ((annualWaste || 0) / annualMaterial) * 100 : null,
         strippingRatio,
+        obDensity: PLANNING_OB_DENSITY_T_PER_M3,
+        isDerived: true,
+        wasteAvailable: hasWaste,
       };
     }, [
       schedule,
@@ -1629,17 +1787,20 @@ function MineDesignOptimization() {
                 sum + row.coal,
               0
             ),
-            waste: rows.reduce(
-              (sum, row) =>
-                sum + row.waste,
-              0
-            ),
-            total: rows.reduce(
-              (sum, row) =>
-                sum +
-                row.totalMaterial,
-              0
-            ),
+            waste: rows.some((row) => row.waste != null)
+              ? rows.reduce(
+                  (sum, row) =>
+                    sum + (row.waste || 0),
+                  0
+                )
+              : null,
+            total: rows.some((row) => row.totalMaterial != null)
+              ? rows.reduce(
+                  (sum, row) =>
+                    sum + (row.totalMaterial || 0),
+                  0
+                )
+              : null,
           };
         }
       );
@@ -1845,17 +2006,102 @@ function MineDesignOptimization() {
     );
   }
 
-  function useSelectedData() {
-    setInputs((current) => ({
+  function applySelectedDataToInputs(current) {
+    const nextInputs = {
       ...current,
+      miningArea:
+        selectedDataSummary.areaKm2 != null
+          ? selectedDataSummary.areaKm2 * 1000000
+          : current.miningArea,
       seamThickness:
-        selectedDataSummary.averageThickness ??
-        current.seamThickness,
+        selectedDataSummary.averageThickness != null
+          ? selectedDataSummary.averageThickness
+          : current.seamThickness,
       miningDepth:
-        selectedDataSummary.averageDepth ??
-        current.miningDepth,
-    }));
+        selectedDataSummary.averageDepth != null
+          ? selectedDataSummary.averageDepth
+          : current.miningDepth,
+      productionTarget:
+        selectedDataSummary.prcMtpa != null && Number(current.workingDays) > 0
+          ? (selectedDataSummary.prcMtpa * 1000000) / Number(current.workingDays)
+          : current.productionTarget,
+      recoveryFactor:
+        Number(current.recoveryFactor) > 0
+          ? current.recoveryFactor
+          : PLANNING_RECOVERY_PERCENT,
+      overburden:
+        selectedDataSummary.averageThickness != null
+          ? selectedDataSummary.averageThickness * PLANNING_STRIPPING_RATIO
+          : current.overburden,
+    };
+
+    setInputs(nextInputs);
+
+    // Immediately initialize the optimized scenario from the selected CMPDI inputs
+    // so the BEFORE -> AFTER section never starts with zero production.
+    const baseProduction = Number(nextInputs.productionTarget) || 0;
+    const baseRecovery = Number(nextInputs.recoveryFactor) || PLANNING_RECOVERY_PERCENT;
+    setOptimization({
+      benchHeight: Math.max(1, Number(nextInputs.benchHeight) * 0.8),
+      benchWidth: Math.max(1, Number(nextInputs.benchWidth) * 1.2),
+      productionTarget: Math.round(baseProduction * 1.1),
+      recoveryFactor: Math.min(100, baseRecovery + 4),
+    });
   }
+
+  function useSelectedData() {
+    applySelectedDataToInputs(inputs);
+  }
+
+  useEffect(() => {
+    if (!mine || !selectedDataSummary.count) return;
+
+    setInputs((current) => {
+      const nextInputs = {
+        ...current,
+        miningArea:
+          selectedDataSummary.areaKm2 != null
+            ? selectedDataSummary.areaKm2 * 1000000
+            : current.miningArea,
+        seamThickness:
+          selectedDataSummary.averageThickness != null
+            ? selectedDataSummary.averageThickness
+            : current.seamThickness,
+        miningDepth:
+          selectedDataSummary.averageDepth != null
+            ? selectedDataSummary.averageDepth
+            : current.miningDepth,
+        productionTarget:
+          selectedDataSummary.prcMtpa != null && Number(current.workingDays) > 0
+            ? (selectedDataSummary.prcMtpa * 1000000) / Number(current.workingDays)
+            : current.productionTarget,
+        recoveryFactor:
+          Number(current.recoveryFactor) > 0
+            ? current.recoveryFactor
+            : PLANNING_RECOVERY_PERCENT,
+        overburden:
+          selectedDataSummary.averageThickness != null
+            ? selectedDataSummary.averageThickness * PLANNING_STRIPPING_RATIO
+            : current.overburden,
+      };
+
+      setOptimization({
+        benchHeight: Math.max(1, Number(nextInputs.benchHeight) * 0.8),
+        benchWidth: Math.max(1, Number(nextInputs.benchWidth) * 1.2),
+        productionTarget: Math.round((Number(nextInputs.productionTarget) || 0) * 1.1),
+        recoveryFactor: Math.min(100, (Number(nextInputs.recoveryFactor) || PLANNING_RECOVERY_PERCENT) + 4),
+      });
+
+      return nextInputs;
+    });
+  }, [
+    mine,
+    selectedDataSummary.count,
+    selectedDataSummary.areaKm2,
+    selectedDataSummary.averageThickness,
+    selectedDataSummary.averageDepth,
+    selectedDataSummary.prcMtpa,
+  ]);
 
   function resetOptimization() {
     setOptimization({
@@ -1866,7 +2112,7 @@ function MineDesignOptimization() {
       productionTarget:
         inputs.productionTarget,
       recoveryFactor:
-        inputs.recoveryFactor,
+        Number(inputs.recoveryFactor) || PLANNING_RECOVERY_PERCENT,
     });
   }
 
@@ -2021,7 +2267,7 @@ function MineDesignOptimization() {
           <div>
 
             <p className="md-eyebrow">
-              DATA CONNECTION
+              CMPDI DATA CONNECTION
             </p>
 
             <h2 className="md-section-title">
@@ -2030,7 +2276,7 @@ function MineDesignOptimization() {
 
             <p className="md-helper">
               Select a mine or seam from the
-              connected MINQORA mining dataset.
+              connected real CMPDI multi-mine dataset.
             </p>
 
           </div>
@@ -2038,8 +2284,8 @@ function MineDesignOptimization() {
           <div className="md-status">
 
             {loadingData
-              ? "LOADING"
-              : `${records.length} RECORDS`}
+              ? "LOADING CMPDI"
+              : `${records.length} CMPDI RECORDS`}
 
           </div>
 
@@ -2186,13 +2432,17 @@ function MineDesignOptimization() {
             <div className="md-readonly">
 
               {selectedDataSummary.count > 0
-                ? "Connected source data available"
+                ? `Connected CMPDI source data${selectedDataSummary.prcMtpa != null ? ` · PRC ${selectedDataSummary.prcMtpa} MTPA` : ""}`
                 : "No filtered records selected"}
 
             </div>
 
           </div>
 
+        </div>
+
+        <div className="md-note">
+          <strong>REAL-DATA RULE:</strong> CMPDI geological/resource/capacity values are source data. Monthly production, waste movement, fleet performance and optimization outputs are planning calculations. Where Machhakata-specific engineering inputs are unavailable, MINQORA uses explicit benchmark assumptions and labels them as scenario values.
         </div>
 
         <div className="md-actions">
@@ -2234,7 +2484,7 @@ function MineDesignOptimization() {
           </div>
 
           <div className="md-status">
-            PLANNING ASSUMPTIONS
+            SOURCE + ENGINEERING INPUTS
           </div>
 
         </div>
@@ -2274,7 +2524,7 @@ function MineDesignOptimization() {
             ],
             [
               "productionTarget",
-              "PRODUCTION TARGET (t/day)",
+              "PLANNED PRODUCTION TARGET (t/day)",
               0,
               0,
             ],
@@ -2286,13 +2536,13 @@ function MineDesignOptimization() {
             ],
             [
               "recoveryFactor",
-              "RECOVERY FACTOR (%)",
+              "RECOVERY FACTOR (%) — USER INPUT",
               0,
               1,
             ],
             [
               "overburden",
-              "OVERBURDEN / WASTE (m)",
+              "OVERBURDEN / WASTE (m) — USER INPUT",
               0,
               0.1,
             ],
@@ -2382,7 +2632,7 @@ function MineDesignOptimization() {
           </div>
 
           <div className="md-metric">
-            <span>ANNUAL PRODUCTION</span>
+            <span>ANNUAL PLANNED PRODUCTION</span>
             <strong>
               {formatNumber(
                 baseScenario.annualProduction
@@ -2390,19 +2640,19 @@ function MineDesignOptimization() {
               t
             </strong>
             <small>
-              target × working days
+              derived planning value
             </small>
           </div>
 
           <div className="md-metric">
             <span>STRIPPING RATIO</span>
             <strong>
-              {baseScenario.strippingRatio.toFixed(
-                2
-              )}
+              {baseScenario.strippingRatio != null
+                ? baseScenario.strippingRatio.toFixed(2)
+                : "N/A"}
             </strong>
             <small>
-              overburden ÷ seam thickness
+              scenario benchmark · editable
             </small>
           </div>
 
@@ -2849,7 +3099,7 @@ function MineDesignOptimization() {
           </div>
 
           <div className="md-status">
-            SCENARIO MODEL
+            SCENARIO MODEL · +10% PRODUCTION
           </div>
 
         </div>
@@ -3155,19 +3405,19 @@ function MineDesignOptimization() {
                   </strong>
                 </td>
                 <td>
-                  {baseScenario.strippingRatio.toFixed(
-                    2
-                  )}
+                  {baseScenario.strippingRatio != null
+                    ? baseScenario.strippingRatio.toFixed(2)
+                    : "N/A"}
                 </td>
                 <td>
-                  {optimizedScenario.strippingRatio.toFixed(
-                    2
-                  )}
+                  {optimizedScenario.strippingRatio != null
+                    ? optimizedScenario.strippingRatio.toFixed(2)
+                    : "N/A"}
                 </td>
                 <td>
-                  {strippingChange.toFixed(
-                    2
-                  )}
+                  {strippingChange != null
+                    ? strippingChange.toFixed(2)
+                    : "N/A"}
                 </td>
               </tr>
 
@@ -3498,6 +3748,9 @@ function MineDesignOptimization() {
             <h2 className="md-section-title">
               Cumulative Production & Mine Progress
             </h2>
+            <p className="md-helper">
+              This section shows MINQORA's derived plan from the selected CMPDI capacity. It is not an operational production history.
+            </p>
 
             <p className="md-helper">
               Track planned cumulative production
@@ -3731,9 +3984,8 @@ function MineDesignOptimization() {
 
           <p className="forecast-text">
 
-            Based on the current average
-            monthly production rate, the
-            estimated year-end production is{" "}
+            Based on the current MINQORA planning
+            allocation, the derived year-end production is{" "}
 
             <strong>
               {formatNumber(
@@ -3818,7 +4070,7 @@ function MineDesignOptimization() {
           </div>
 
           <div className="md-status">
-            MATERIAL MODEL
+            DERIVED FROM CMPDI PRC
           </div>
 
         </div>
@@ -3826,7 +4078,7 @@ function MineDesignOptimization() {
         <div className="md-grid-4">
 
           <div className="md-metric">
-            <span>ANNUAL COAL</span>
+            <span>ANNUAL PLANNED COAL</span>
             <strong>
               {formatNumber(
                 materialTracking.annualCoal
@@ -3834,42 +4086,40 @@ function MineDesignOptimization() {
               t
             </strong>
             <small>
-              scheduled coal
+              derived from selected CMPDI PRC
             </small>
           </div>
 
           <div className="md-metric">
-            <span>ANNUAL WASTE</span>
+            <span>ANNUAL OB MASS (SCENARIO)</span>
             <strong>
-              {formatNumber(
-                materialTracking.annualWaste
-              )}{" "}
-              t
+              {materialTracking.annualWaste != null
+                ? `${formatNumber(materialTracking.annualWaste)} t`
+                : "N/A"}
             </strong>
             <small>
-              estimated waste
+              2.75 m³/t benchmark × 2.2 t/m³ density assumption
             </small>
           </div>
 
           <div className="md-metric">
-            <span>TOTAL MATERIAL</span>
+            <span>TOTAL MATERIAL (SCENARIO)</span>
             <strong>
-              {formatNumber(
-                materialTracking.annualMaterial
-              )}{" "}
-              t
+              {materialTracking.annualMaterial != null
+                ? `${formatNumber(materialTracking.annualMaterial)} t`
+                : "N/A"}
             </strong>
             <small>
-              coal + waste
+              coal + OB mass-equivalent
             </small>
           </div>
 
           <div className="md-metric">
             <span>STRIPPING RATIO</span>
             <strong>
-              {materialTracking.strippingRatio.toFixed(
-                2
-              )}
+              {materialTracking.strippingRatio != null
+                ? materialTracking.strippingRatio.toFixed(2)
+                : "N/A"}
             </strong>
             <small>
               waste / coal
@@ -3891,12 +4141,15 @@ function MineDesignOptimization() {
           <div>
 
             <p className="md-eyebrow">
-              MONTHLY MATERIAL TRACKING
+              MONTHLY MATERIAL MODEL
             </p>
 
             <h2 className="md-section-title">
               Coal, Waste & Cumulative Movement
             </h2>
+            <p className="md-helper">
+              Coal is a MINQORA planning allocation derived from the selected CMPDI PRC; it is not measured monthly production. For waste movement, MINQORA uses an editable 2.75 m³/t coal planning benchmark (Indian opencast average, 2021-22) and an assumed 2.2 t/m³ overburden bulk density to convert OB volume into a mass-equivalent scenario. Neither value is a Machhakata-specific measurement.
+            </p>
 
           </div>
 
@@ -3910,8 +4163,8 @@ function MineDesignOptimization() {
 
               <tr>
                 <th>MONTH</th>
-                <th>COAL</th>
-                <th>WASTE</th>
+                <th>PLANNED COAL</th>
+                <th>OB MASS-EQUIVALENT</th>
                 <th>TOTAL MATERIAL</th>
                 <th>CUMULATIVE COAL</th>
                 <th>CUMULATIVE WASTE</th>
@@ -3945,17 +4198,15 @@ function MineDesignOptimization() {
                     </td>
 
                     <td>
-                      {formatNumber(
-                        row.waste
-                      )}{" "}
-                      t
+                      {row.waste != null
+                        ? `${formatNumber(row.waste)} t`
+                        : "N/A — no public CMPDI waste data"}
                     </td>
 
                     <td>
-                      {formatNumber(
-                        row.totalMaterial
-                      )}{" "}
-                      t
+                      {row.totalMaterial != null
+                        ? `${formatNumber(row.totalMaterial)} t`
+                        : "N/A"}
                     </td>
 
                     <td>
@@ -3966,17 +4217,15 @@ function MineDesignOptimization() {
                     </td>
 
                     <td>
-                      {formatNumber(
-                        row.cumulativeWaste
-                      )}{" "}
-                      t
+                      {row.cumulativeWaste != null
+                        ? `${formatNumber(row.cumulativeWaste)} t`
+                        : "N/A"}
                     </td>
 
                     <td>
-                      {formatNumber(
-                        row.cumulativeMaterial
-                      )}{" "}
-                      t
+                      {row.cumulativeMaterial != null
+                        ? `${formatNumber(row.cumulativeMaterial)} t`
+                        : "N/A"}
                     </td>
 
                   </tr>
@@ -3998,17 +4247,15 @@ function MineDesignOptimization() {
                 </td>
 
                 <td>
-                  {formatNumber(
-                    materialTracking.annualWaste
-                  )}{" "}
-                  t
+                  {materialTracking.annualWaste != null
+                    ? `${formatNumber(materialTracking.annualWaste)} t`
+                    : "N/A"}
                 </td>
 
                 <td>
-                  {formatNumber(
-                    materialTracking.annualMaterial
-                  )}{" "}
-                  t
+                  {materialTracking.annualMaterial != null
+                    ? `${formatNumber(materialTracking.annualMaterial)} t`
+                    : "N/A"}
                 </td>
 
                 <td>
@@ -4019,17 +4266,15 @@ function MineDesignOptimization() {
                 </td>
 
                 <td>
-                  {formatNumber(
-                    materialTracking.annualWaste
-                  )}{" "}
-                  t
+                  {materialTracking.annualWaste != null
+                    ? `${formatNumber(materialTracking.annualWaste)} t`
+                    : "N/A"}
                 </td>
 
                 <td>
-                  {formatNumber(
-                    materialTracking.annualMaterial
-                  )}{" "}
-                  t
+                  {materialTracking.annualMaterial != null
+                    ? `${formatNumber(materialTracking.annualMaterial)} t`
+                    : "N/A"}
                 </td>
 
               </tr>
@@ -4059,6 +4304,9 @@ function MineDesignOptimization() {
             <h2 className="md-section-title">
               Quarterly Coal & Waste
             </h2>
+            <p className="md-helper">
+              Quarterly values are derived planning allocations. They are not historical CMPDI production or waste measurements.
+            </p>
 
           </div>
 
@@ -4082,10 +4330,9 @@ function MineDesignOptimization() {
 
                 <p className="quarter-value">
 
-                  {formatNumber(
-                    item.total
-                  )}{" "}
-                  t
+                  {item.total != null
+                    ? `${formatNumber(item.total)} t`
+                    : "N/A"}
 
                 </p>
 
@@ -4102,10 +4349,9 @@ function MineDesignOptimization() {
                 <div className="quarter-label">
 
                   Waste:{" "}
-                  {formatNumber(
-                    item.waste
-                  )}{" "}
-                  t
+                  {item.waste != null
+                    ? `${formatNumber(item.waste)} t`
+                    : "N/A"}
 
                 </div>
 
@@ -4266,13 +4512,11 @@ function MineDesignOptimization() {
           <div className="md-metric">
             <span>STRIPPING CHANGE</span>
             <strong>
-              {strippingChange > 0
-                ? `+${strippingChange.toFixed(
-                    2
-                  )}`
-                : strippingChange.toFixed(
-                    2
-                  )}
+              {strippingChange != null
+                ? strippingChange > 0
+                  ? `+${strippingChange.toFixed(2)}`
+                  : strippingChange.toFixed(2)
+                : "N/A"}
             </strong>
             <small>
               scenario comparison
@@ -4425,11 +4669,11 @@ function MineDesignOptimization() {
           </div>
 
           <div className="md-metric">
-            <span>ANNUAL PRODUCTION</span>
+            <span>ANNUAL PLANNED PRODUCTION</span>
             <strong>
               {formatNumber(baseScenario.annualProduction)} t
             </strong>
-            <small>daily target × working days</small>
+            <small>derived from CMPDI capacity / planning inputs</small>
           </div>
         </div>
 
@@ -4440,7 +4684,7 @@ function MineDesignOptimization() {
             {productionImprovement.toFixed(2)}%, recoverable-volume change{" "}
             {volumeImprovement.toFixed(2)}%, bench-count change{" "}
             {benchChange > 0 ? `+${benchChange}` : benchChange}, and stripping-ratio
-            change {strippingChange.toFixed(2)}.
+            change {strippingChange != null ? strippingChange.toFixed(2) : "N/A"}.
           </div>
 
           <div className="md-warning-item">

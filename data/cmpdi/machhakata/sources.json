@@ -1,0 +1,89 @@
+{
+  "block_name": "Machhakata (Revised)",
+
+  "sources": [
+    {
+      "source_id": "SRC-001",
+      "organization": "Central Mine Planning & Design Institute Limited (CMPDI)",
+      "title": "Coal Block Information System",
+      "source_type": "official_web_database",
+      "used_for": [
+        "Block name",
+        "State",
+        "District",
+        "Coalfield",
+        "Exploration status",
+        "Tentative area",
+        "Tentative geological resource",
+        "Average grade",
+        "Tentative PRC",
+        "Mine type"
+      ],
+      "url": "https://coalblock-is.cmpdi.co.in/pages/dashboard.php",
+      "accessed": "2026-09-06",
+      "reliability": "official",
+      "notes": "CMPDI CCBIS values are preserved with their published status. Tentative values are not treated as final measurements."
+    },
+
+    {
+      "source_id": "SRC-002",
+      "organization": "MSTC / Coal Block Information",
+      "title": "Machhakata & Mahanadi Coal Block Summary",
+      "source_type": "geological_block_document",
+      "used_for": [
+        "Seam names",
+        "Seam thickness ranges",
+        "Seam depth ranges",
+        "Seam-wise geological reserves",
+        "Seam grades",
+        "Exploration information",
+        "Borehole information",
+        "Strike",
+        "Dip"
+      ],
+      "url": "https://mstcecommerce.com/auctionhome/coalblock/RenderFileCoalBlock.jsp?file=com-Machhakata-and-Mahanadi.pdf",
+      "accessed": "2026-09-06",
+      "reliability": "source_derived",
+      "notes": "Seam-level information is derived from the published geological/block summary."
+    },
+
+    {
+      "source_id": "SRC-003",
+      "organization": "Central Mine Planning & Design Institute Limited (CMPDI)",
+      "title": "Annual Report & Accounts 2024-25",
+      "source_type": "official_annual_report",
+      "used_for": [
+        "DGPS survey confirmation",
+        "Block boundary survey activity",
+        "Machhakata (Revised) spatial survey information"
+      ],
+      "url": "https://www.cmpdi.co.in/sites/default/files/2026-03/CMPDIL_Annual_Report_2024-25.pdf",
+      "accessed": "2026-09-06",
+      "reliability": "official",
+      "notes": "CMPDI reports DGPS survey work for finalization of block-boundary coordinates and preparation of the final block-boundary plan for Machhakata (Revised) Coal Block."
+    },
+
+    {
+      "source_id": "SRC-004",
+      "organization": "Ministry of Coal, Government of India",
+      "title": "Annual Report 2025-26",
+      "source_type": "official_government_report",
+      "used_for": [
+        "Machhakata (Revised) allocation",
+        "NLC India Limited",
+        "Geological Report approval information"
+      ],
+      "url": "https://coal.nic.in/sites/default/files/2026-02/chap1AnnualReport2026en.pdf",
+      "accessed": "2026-09-06",
+      "reliability": "official",
+      "notes": "The Ministry of Coal reports the allocation of Machhakata (Revised) and Geological Report approval information."
+    }
+  ],
+
+  "traceability_policy": {
+    "enabled": true,
+    "rule": "Every important geological or mining value should retain its source, source status and access date where available.",
+    "missing_data_rule": "If an official value cannot be verified, MINQORA must show the value as unavailable rather than inventing it.",
+    "conflicting_values_rule": "Values from different official/source documents must be retained separately with their respective sources and dates rather than silently overwriting one another."
+  }
+}
