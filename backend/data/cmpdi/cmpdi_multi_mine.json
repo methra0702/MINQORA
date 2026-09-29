@@ -1,0 +1,576 @@
+{
+  "dataset_name": "MINQORA CMPDI Multi-Mine Real Data",
+  "version": "1.0",
+  "description": "Source-traceable public CMPDI/Ministry of Coal geological and historical data for six Odisha coal blocks.",
+  "data_policy": {
+    "real_data_only": true,
+    "missing_values": "N/A",
+    "historical_values_preserved": true,
+    "conflicting_source_values_preserved": true,
+    "no_fabricated_production_recovery_ash_moisture_density_coordinates_dtm_or_risk": true
+  },
+  "mines": [
+    {
+      "id": 1,
+      "name": "Machhakata (Revised)",
+      "block": {
+        "state": "Odisha",
+        "coalfield": "Talcher",
+        "area_km2": 19.99,
+        "geological_resource_mt": 1369,
+        "grade": "G11",
+        "exploration_status": "Explored",
+        "prc_mtpa": 30,
+        "mining_method": "OC"
+      },
+      "exploration": {
+        "exploration_agency": "CMPDI",
+        "exploration_grade": "G1",
+        "boreholes": 193,
+        "drilling_m": 39602,
+        "boreholes_per_km2": 9.5,
+        "strike": "East-West",
+        "dip": "3–5°"
+      },
+      "spatial": {
+        "status": "SOURCE-DEPENDENT",
+        "coordinates_available": false,
+        "dtm_available": false,
+        "note": "CMPDI DGPS boundary-survey work is documented, but a public downloadable Machhakata coordinate file or DTM/DEM was not verified."
+      },
+      "seams": [
+        {
+          "seam": "XI",
+          "thickness_min_m": 0.2,
+          "thickness_max_m": 7.27,
+          "depth_min_m": 16.37,
+          "depth_max_m": 139.38,
+          "geological_reserve_mt": 10.77,
+          "grade": "E-G",
+          "source": "Machhakata & Mahanadi Coal Block Summary"
+        },
+        {
+          "seam": "X",
+          "thickness_min_m": 0.12,
+          "thickness_max_m": 3.77,
+          "depth_min_m": 14.51,
+          "depth_max_m": 147.1,
+          "geological_reserve_mt": 5.13,
+          "grade": "E-G",
+          "source": "Machhakata & Mahanadi Coal Block Summary"
+        },
+        {
+          "seam": "IX TOP",
+          "thickness_min_m": 0.1,
+          "thickness_max_m": 4.96,
+          "depth_min_m": 14.0,
+          "depth_max_m": 160.87,
+          "geological_reserve_mt": 11.7,
+          "grade": "E-G",
+          "source": "Machhakata & Mahanadi Coal Block Summary"
+        },
+        {
+          "seam": "IX BOT",
+          "thickness_min_m": 0.4,
+          "thickness_max_m": 6.37,
+          "depth_min_m": 14.74,
+          "depth_max_m": 167.97,
+          "geological_reserve_mt": 64.48,
+          "grade": "E-G",
+          "source": "Machhakata & Mahanadi Coal Block Summary"
+        },
+        {
+          "seam": "VIII",
+          "thickness_min_m": 0.49,
+          "thickness_max_m": 13.92,
+          "depth_min_m": 16.16,
+          "depth_max_m": 122.68,
+          "geological_reserve_mt": 122.71,
+          "grade": "F-G",
+          "source": "Machhakata & Mahanadi Coal Block Summary"
+        },
+        {
+          "seam": "VII TOP",
+          "thickness_min_m": 0.29,
+          "thickness_max_m": 12.6,
+          "depth_min_m": 15.0,
+          "depth_max_m": 140.95,
+          "geological_reserve_mt": 120.04,
+          "grade": "E-G",
+          "source": "Machhakata & Mahanadi Coal Block Summary"
+        },
+        {
+          "seam": "VII BOT",
+          "thickness_min_m": 0.07,
+          "thickness_max_m": 5.37,
+          "depth_min_m": 16.81,
+          "depth_max_m": 143.76,
+          "geological_reserve_mt": 7.51,
+          "grade": "E-G",
+          "source": "Machhakata & Mahanadi Coal Block Summary"
+        },
+        {
+          "seam": "VI TOP",
+          "thickness_min_m": 0.34,
+          "thickness_max_m": 8.21,
+          "depth_min_m": 10.11,
+          "depth_max_m": 152.0,
+          "geological_reserve_mt": 80.98,
+          "grade": "E-G",
+          "source": "Machhakata & Mahanadi Coal Block Summary"
+        },
+        {
+          "seam": "VI BOT",
+          "thickness_min_m": 0.2,
+          "thickness_max_m": 12.58,
+          "depth_min_m": 17.57,
+          "depth_max_m": 174.51,
+          "geological_reserve_mt": 78.46,
+          "grade": "E-G",
+          "source": "Machhakata & Mahanadi Coal Block Summary"
+        },
+        {
+          "seam": "IV/V",
+          "thickness_min_m": 0.13,
+          "thickness_max_m": 5.85,
+          "depth_min_m": 19.75,
+          "depth_max_m": 176.2,
+          "geological_reserve_mt": 56.73,
+          "grade": "D-G",
+          "source": "Machhakata & Mahanadi Coal Block Summary"
+        },
+        {
+          "seam": "III TOP TOP",
+          "thickness_min_m": 2.25,
+          "thickness_max_m": 13.65,
+          "depth_min_m": 29.0,
+          "depth_max_m": 181.0,
+          "geological_reserve_mt": 158.03,
+          "grade": "E-G",
+          "source": "Machhakata & Mahanadi Coal Block Summary"
+        },
+        {
+          "seam": "III MID",
+          "thickness_min_m": 3.98,
+          "thickness_max_m": 10.82,
+          "depth_min_m": 41.66,
+          "depth_max_m": 202.9,
+          "geological_reserve_mt": 217.16,
+          "grade": "D-G",
+          "source": "Machhakata & Mahanadi Coal Block Summary"
+        },
+        {
+          "seam": "III BOT TOP",
+          "thickness_min_m": 0.36,
+          "thickness_max_m": 5.84,
+          "depth_min_m": 45.63,
+          "depth_max_m": 205.85,
+          "geological_reserve_mt": 72.77,
+          "grade": "C-G",
+          "source": "Machhakata & Mahanadi Coal Block Summary"
+        },
+        {
+          "seam": "III BOT BOT",
+          "thickness_min_m": 0.05,
+          "thickness_max_m": 5.91,
+          "depth_min_m": 45.0,
+          "depth_max_m": 199.44,
+          "geological_reserve_mt": 10.79,
+          "grade": "F-G",
+          "source": "Machhakata & Mahanadi Coal Block Summary"
+        },
+        {
+          "seam": "LOCAL 1",
+          "thickness_min_m": 0.05,
+          "thickness_max_m": 2.62,
+          "depth_min_m": 50.3,
+          "depth_max_m": 233.19,
+          "geological_reserve_mt": 19.07,
+          "grade": "D-G",
+          "source": "Machhakata & Mahanadi Coal Block Summary"
+        },
+        {
+          "seam": "LOCAL 2",
+          "thickness_min_m": 0.08,
+          "thickness_max_m": 2.62,
+          "depth_min_m": 62.1,
+          "depth_max_m": 235.92,
+          "geological_reserve_mt": 14.61,
+          "grade": "E-G",
+          "source": "Machhakata & Mahanadi Coal Block Summary"
+        },
+        {
+          "seam": "II TOP",
+          "thickness_min_m": 0.12,
+          "thickness_max_m": 5.47,
+          "depth_min_m": 70.05,
+          "depth_max_m": 241.91,
+          "geological_reserve_mt": 43.07,
+          "grade": "E-G",
+          "source": "Machhakata & Mahanadi Coal Block Summary"
+        },
+        {
+          "seam": "II MID",
+          "thickness_min_m": 0.06,
+          "thickness_max_m": 2.31,
+          "depth_min_m": 8.95,
+          "depth_max_m": 247.48,
+          "geological_reserve_mt": 8.2,
+          "grade": "E-G",
+          "source": "Machhakata & Mahanadi Coal Block Summary"
+        },
+        {
+          "seam": "II BOT",
+          "thickness_min_m": 0.07,
+          "thickness_max_m": 2.76,
+          "depth_min_m": 89.88,
+          "depth_max_m": 233.72,
+          "geological_reserve_mt": 5.96,
+          "grade": "D-G",
+          "source": "Machhakata & Mahanadi Coal Block Summary"
+        },
+        {
+          "seam": "I A TOP",
+          "thickness_min_m": 0.19,
+          "thickness_max_m": 2.74,
+          "depth_min_m": 124.81,
+          "depth_max_m": 232.75,
+          "geological_reserve_mt": 12.22,
+          "grade": "E-G",
+          "source": "Machhakata & Mahanadi Coal Block Summary"
+        },
+        {
+          "seam": "I A BOT",
+          "thickness_min_m": 0.1,
+          "thickness_max_m": 5.17,
+          "depth_min_m": 113.57,
+          "depth_max_m": 239.15,
+          "geological_reserve_mt": 38.42,
+          "grade": "D-G",
+          "source": "Machhakata & Mahanadi Coal Block Summary"
+        },
+        {
+          "seam": "I B",
+          "thickness_min_m": 1.6,
+          "thickness_max_m": 12.15,
+          "depth_min_m": 125.17,
+          "depth_max_m": 250.0,
+          "geological_reserve_mt": 180.18,
+          "grade": "C-G",
+          "source": "Machhakata & Mahanadi Coal Block Summary"
+        },
+        {
+          "seam": "I C",
+          "thickness_min_m": 0.09,
+          "thickness_max_m": 4.86,
+          "depth_min_m": 132.87,
+          "depth_max_m": 258.7,
+          "geological_reserve_mt": 9.37,
+          "grade": "C-G",
+          "source": "Machhakata & Mahanadi Coal Block Summary"
+        },
+        {
+          "seam": "I D",
+          "thickness_min_m": 0.1,
+          "thickness_max_m": 8.77,
+          "depth_min_m": 143.0,
+          "depth_max_m": 271.8,
+          "geological_reserve_mt": 52.29,
+          "grade": "B-G",
+          "source": "Machhakata & Mahanadi Coal Block Summary"
+        }
+      ],
+      "historical_snapshots": [
+        {
+          "year": 2021,
+          "geological_resource_mt": 1400.65,
+          "grade": "G11",
+          "exploration_grade": "G1",
+          "prc_mtpa": 30,
+          "source": "Ministry of Coal Odisha coal-block summary, 31-Dec-2021"
+        },
+        {
+          "year": 2022,
+          "geological_resource_mt": 1400.65,
+          "grade": "G11",
+          "exploration_grade": "G1",
+          "prc_mtpa": 30,
+          "source": "Ministry of Coal auction presentation, 19-Apr-2022"
+        },
+        {
+          "year": 2022,
+          "geological_resource_mt": 1377,
+          "grade": "G11",
+          "exploration_grade": "G1",
+          "prc_mtpa": 30,
+          "source": "Ministry of Coal presentation, Nov-2022"
+        },
+        {
+          "year": 2025,
+          "geological_resource_mt": 1369,
+          "grade": "G11",
+          "exploration_status": "Explored",
+          "prc_mtpa": 30,
+          "source": "CMPDI CCBIS public block information"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Mahanadi",
+      "block": {
+        "state": "Odisha",
+        "coalfield": "Talcher",
+        "area_km2": 31.15,
+        "geological_resource_mt": 1972,
+        "grade": "G11",
+        "exploration_status": "Partly Explored",
+        "prc_mtpa": null,
+        "mining_method": null
+      },
+      "exploration": {
+        "exploration_agency": "CMPDI",
+        "exploration_grade": "G2"
+      },
+      "spatial": {
+        "status": "SOURCE-DEPENDENT",
+        "coordinates_available": false,
+        "dtm_available": false
+      },
+      "seams": [],
+      "historical_snapshots": [
+        {
+          "year": 2021,
+          "geological_resource_mt": 1993.52,
+          "grade": "G11",
+          "exploration_grade": "G2",
+          "source": "Ministry of Coal Odisha coal-block summary, 31-Dec-2021"
+        },
+        {
+          "year": 2022,
+          "geological_resource_mt": 1993.52,
+          "grade": "G11",
+          "exploration_grade": "G2",
+          "source": "Ministry of Coal auction presentation, 19-Apr-2022"
+        },
+        {
+          "year": 2022,
+          "geological_resource_mt": 1971,
+          "grade": "G11",
+          "exploration_grade": "G2",
+          "source": "Ministry of Coal presentation, Nov-2022"
+        },
+        {
+          "year": 2025,
+          "geological_resource_mt": 1972,
+          "grade": "G11",
+          "exploration_status": "Partly Explored",
+          "source": "CMPDI CCBIS public block information"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "name": "Chhendipada",
+      "block": {
+        "state": "Odisha",
+        "coalfield": "Talcher",
+        "area_km2": 7.49,
+        "geological_resource_mt": 513.09,
+        "grade": "G10",
+        "exploration_status": "Explored",
+        "prc_mtpa": 40,
+        "mining_method": "OC"
+      },
+      "exploration": {
+        "exploration_agency": "CMPDI",
+        "exploration_grade": "G1"
+      },
+      "spatial": {
+        "status": "SOURCE-DEPENDENT",
+        "coordinates_available": false,
+        "dtm_available": false
+      },
+      "seams": [],
+      "historical_snapshots": [
+        {
+          "year": 2021,
+          "geological_resource_mt": 558.98,
+          "grade": "G10",
+          "exploration_grade": "G1",
+          "prc_mtpa": 40,
+          "source": "Ministry of Coal Odisha coal-block summary, 31-Dec-2021"
+        },
+        {
+          "year": 2022,
+          "geological_resource_mt": 558.98,
+          "grade": "G10",
+          "exploration_grade": "G1",
+          "prc_mtpa": 40,
+          "source": "Ministry of Coal auction presentation, 19-Apr-2022"
+        },
+        {
+          "year": 2025,
+          "geological_resource_mt": 513.09,
+          "grade": "G10",
+          "exploration_status": "Explored",
+          "prc_mtpa": 40,
+          "source": "CMPDI CCBIS public block information"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "name": "Chhendipada-II",
+      "block": {
+        "state": "Odisha",
+        "coalfield": "Talcher",
+        "area_km2": 18.99,
+        "geological_resource_mt": 1350,
+        "grade": "G10",
+        "exploration_status": "Explored",
+        "prc_mtpa": 40,
+        "mining_method": "OC"
+      },
+      "exploration": {
+        "exploration_agency": "CMPDI",
+        "exploration_grade": "G2"
+      },
+      "spatial": {
+        "status": "SOURCE-DEPENDENT",
+        "coordinates_available": false,
+        "dtm_available": false
+      },
+      "seams": [],
+      "historical_snapshots": [
+        {
+          "year": 2021,
+          "geological_resource_mt": 1350,
+          "grade": "G10",
+          "exploration_grade": "G2",
+          "source": "Ministry of Coal Odisha coal-block summary, 31-Dec-2021"
+        },
+        {
+          "year": 2022,
+          "geological_resource_mt": 1350,
+          "grade": "G10",
+          "exploration_grade": "G2",
+          "source": "Ministry of Coal auction presentation, 19-Apr-2022"
+        },
+        {
+          "year": 2025,
+          "geological_resource_mt": 1350,
+          "grade": "G10",
+          "exploration_status": "Explored",
+          "prc_mtpa": 40,
+          "source": "CMPDI CCBIS public block information"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "name": "North of Arkhapal Srirampur",
+      "block": {
+        "state": "Odisha",
+        "coalfield": "Talcher",
+        "area_km2": 14.28,
+        "geological_resource_mt": 1325.19,
+        "grade": "G13",
+        "exploration_status": "Explored",
+        "prc_mtpa": 10,
+        "mining_method": "OC"
+      },
+      "exploration": {
+        "exploration_agency": "CMPDI",
+        "exploration_grade": "G1"
+      },
+      "spatial": {
+        "status": "SOURCE-DEPENDENT",
+        "coordinates_available": false,
+        "dtm_available": false
+      },
+      "seams": [],
+      "historical_snapshots": [
+        {
+          "year": 2021,
+          "geological_resource_mt": 1805.89,
+          "grade": "G13",
+          "exploration_grade": "G1",
+          "prc_mtpa": 15,
+          "source": "Ministry of Coal Odisha coal-block summary, 31-Dec-2021"
+        },
+        {
+          "year": 2022,
+          "geological_resource_mt": 1805.893,
+          "grade": "G13",
+          "exploration_grade": "G1",
+          "prc_mtpa": 15,
+          "source": "Ministry of Coal auction presentation, 19-Apr-2022"
+        },
+        {
+          "year": 2022,
+          "geological_resource_mt": 1245,
+          "grade": "G13",
+          "exploration_grade": "G1",
+          "prc_mtpa": 12,
+          "source": "Ministry of Coal presentation, Nov-2022"
+        },
+        {
+          "year": 2025,
+          "geological_resource_mt": 1325.19,
+          "grade": "G13",
+          "exploration_status": "Explored",
+          "prc_mtpa": 10,
+          "source": "CMPDI CCBIS public block information"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "name": "Ramchandi Promotion Block",
+      "block": {
+        "state": "Odisha",
+        "coalfield": "Talcher",
+        "area_km2": null,
+        "geological_resource_mt": null,
+        "grade": "G13",
+        "exploration_status": "Partially Explored",
+        "prc_mtpa": null,
+        "mining_method": null
+      },
+      "exploration": {
+        "exploration_agency": "CMPDI",
+        "exploration_grade": "G2"
+      },
+      "spatial": {
+        "status": "SOURCE-DEPENDENT",
+        "coordinates_available": false,
+        "dtm_available": false
+      },
+      "seams": [],
+      "historical_snapshots": [
+        {
+          "year": 2021,
+          "geological_resource_mt": 1500,
+          "grade": "G13",
+          "exploration_grade": "G2",
+          "exploration_status": "Partially Explored",
+          "source": "Ministry of Coal Odisha coal-block summary, 31-Dec-2021"
+        },
+        {
+          "year": 2022,
+          "geological_resource_mt": 3287.082,
+          "grade": "G13",
+          "exploration_grade": "G1",
+          "prc_mtpa": 12,
+          "source": "Ministry of Coal auction presentation, 19-Apr-2022"
+        }
+      ]
+    }
+  ],
+  "source_metadata": {
+    "primary_public_source": "CMPDI Coal Block Information System (CCBIS)",
+    "historical_source": "Ministry of Coal coal-block summaries and auction presentations",
+    "note": "Public coal-block values can change between source snapshots. Values are preserved by source year rather than silently overwritten."
+  }
+}

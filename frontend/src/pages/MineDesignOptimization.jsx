@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 
-const API_URL = "http://127.0.0.1:8002";
+const API_URL = "http://127.0.0.1:8000";
 
 // MINQORA planning assumptions used only for scenario calculations.
 const PLANNING_STRIPPING_RATIO = 2.75;
@@ -409,11 +409,12 @@ const styles = `
   }
 
   .schedule-progress {
-    width: 130px;
-    height: 7px;
-    overflow: hidden;
-    border-radius: 10px;
-    background: #e8eef2;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 150px;
+    min-width: 150px;
+    height: 20px;
   }
 
   .schedule-progress-bar {
@@ -700,11 +701,24 @@ function MineDesignOptimization() {
 
         const data = await response.json();
 
-        const loadedMines = Array.isArray(data?.mines)
+        const allLoadedMines = Array.isArray(data?.mines)
           ? data.mines
           : Array.isArray(data)
           ? data
           : [];
+
+        // Phase 06 is intentionally scoped to the active MINQORA mine: Machhakata (Revised).
+        // Other CMPDI blocks remain available in the source registry, but are not mixed into
+        // this mine-design workflow.
+        const loadedMines = allLoadedMines.filter((mineRecord) => {
+          const name = String(
+            mineRecord?.name ??
+            mineRecord?.mine ??
+            mineRecord?.mine_name ??
+            ""
+          ).trim();
+          return name === "Machhakata (Revised)";
+        });
 
         /*
          * Convert the source-traceable CMPDI mine package into the
@@ -853,12 +867,14 @@ function MineDesignOptimization() {
         });
 
         setRecords(loadedRecords);
-        setDataError("");
+        setMine("Machhakata (Revised)");
+        setSeam("");
+        setDataError(loadedRecords.length ? "" : "Machhakata source data returned no seam records.");
       } catch (error) {
         console.error(error);
 
         setDataError(
-          "Real CMPDI data could not be loaded. Manual planning inputs remain available."
+          "Machhakata source data could not be loaded. Manual planning inputs remain available."
         );
       } finally {
         setLoadingData(false);
@@ -3632,6 +3648,16 @@ function MineDesignOptimization() {
               Month-by-Month Production Plan
             </h2>
 
+            <p
+              style={{
+                margin: "6px 0 0",
+                fontSize: 13,
+                color: "#667085",
+              }}
+            >
+              Monthly planned production as a percentage of the annual production target.
+            </p>
+
           </div>
 
         </div>
@@ -3647,9 +3673,9 @@ function MineDesignOptimization() {
                 <th>QUARTER</th>
                 <th>WORKING DAYS</th>
                 <th>PRODUCTION TARGET</th>
-                <th>% ANNUAL</th>
+                <th>ANNUAL TARGET SHARE</th>
                 <th>CUMULATIVE PRODUCTION</th>
-                <th>PLAN LOAD</th>
+                <th>MONTHLY TARGET SHARE</th>
               </tr>
 
             </thead>
@@ -3702,18 +3728,43 @@ function MineDesignOptimization() {
 
                     <td>
 
-                      <div className="schedule-progress">
+                      <div
+                        className="schedule-progress"
+                      >
 
                         <div
-                          className="schedule-progress-bar"
                           style={{
-                            width: `${Math.min(
-                              100,
-                              row.percentOfAnnual *
-                                4
-                            )}%`,
+                            width: 80,
+                            height: 8,
+                            background: "#e7edf1",
+                            borderRadius: 999,
+                            overflow: "hidden",
+                            flexShrink: 0,
                           }}
-                        />
+                        >
+                          <div
+                            className="schedule-progress-bar"
+                            style={{
+                              width: `${Math.min(
+                                100,
+                                (row.percentOfAnnual / 10) * 100
+                              )}%`,
+                              height: "100%",
+                              borderRadius: 999,
+                            }}
+                          />
+                        </div>
+
+                        <strong
+                          style={{
+                            minWidth: 38,
+                            fontSize: 13,
+                            textAlign: "left",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {row.percentOfAnnual.toFixed(1)}%
+                        </strong>
 
                       </div>
 

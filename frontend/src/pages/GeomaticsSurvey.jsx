@@ -531,15 +531,16 @@ export default function GeomaticsSurvey() {
 
 
   const geometry = useMemo(() => {
+    const useProjected = Boolean(fields.easting && fields.northing);
+
     const points = surveyRecords.map((record, index) => {
       const lat = fields.latitude ? toNumber(record[fields.latitude]) : null;
       const lon = fields.longitude ? toNumber(record[fields.longitude]) : null;
       const east = fields.easting ? toNumber(record[fields.easting]) : null;
       const north = fields.northing ? toNumber(record[fields.northing]) : null;
 
-      const useProjected = east !== null && north !== null;
-      const x = useProjected ? east : lon;
-      const y = useProjected ? north : lat;
+      const x = useProjected && east !== null && north !== null ? east : lon;
+      const y = useProjected && east !== null && north !== null ? north : lat;
 
       return {
         id: fields.pointId ? record[fields.pointId] || `P-${index + 1}` : `P-${index + 1}`,
@@ -559,16 +560,63 @@ export default function GeomaticsSurvey() {
     const maxX = Math.max(...xs);
     const minY = Math.min(...ys);
     const maxY = Math.max(...ys);
-    const width = maxX - minX;
-    const height = maxY - minY;
+
+    // Convert geographic coordinates (longitude/latitude in degrees) to a
+    // local metre-based coordinate system before measuring extent. This keeps
+    // the geometry values physically meaningful for the uploaded survey.
+    let width;
+    let height;
+    let area;
+    let perimeter;
+    let metricPoints = points;
+    let metricBounds = { minX, maxX, minY, maxY };
+
+    if (useProjected) {
+      width = maxX - minX;
+      height = maxY - minY;
+      area = width * height;
+      perimeter = 2 * (width + height);
+    } else {
+      const meanLat = ys.reduce((sum, value) => sum + value, 0) / ys.length;
+      const meanLon = xs.reduce((sum, value) => sum + value, 0) / xs.length;
+      const DEG_LAT_M = 110540;
+      const DEG_LON_M = 111320 * Math.cos((meanLat * Math.PI) / 180);
+
+      metricPoints = points.map((point) => ({
+        ...point,
+        metricX: (point.x - meanLon) * DEG_LON_M,
+        metricY: (point.y - meanLat) * DEG_LAT_M,
+      }));
+
+      const metricXs = metricPoints.map((point) => point.metricX);
+      const metricYs = metricPoints.map((point) => point.metricY);
+      const metricMinX = Math.min(...metricXs);
+      const metricMaxX = Math.max(...metricXs);
+      const metricMinY = Math.min(...metricYs);
+      const metricMaxY = Math.max(...metricYs);
+
+      width = metricMaxX - metricMinX;
+      height = metricMaxY - metricMinY;
+      area = width * height;
+      perimeter = 2 * (width + height);
+      metricBounds = {
+        minX: metricMinX,
+        maxX: metricMaxX,
+        minY: metricMinY,
+        maxY: metricMaxY,
+      };
+    }
 
     return {
       points,
+      metricPoints,
       bounds: { minX, maxX, minY, maxY },
+      metricBounds,
       width,
       height,
-      area: width * height,
-      perimeter: 2 * (width + height),
+      area,
+      perimeter,
+      units: useProjected ? "m" : "m (converted from lat/lon)",
       ready: points.length >= 3,
     };
   }, [surveyRecords, fields]);
@@ -863,6 +911,7 @@ export default function GeomaticsSurvey() {
 
         <div style={styles.uploadBox}>
           <div style={styles.label}>Survey CSV</div>
+            <div style={{ marginTop: "8px", fontSize: "12px", opacity: 0.7 }}>Synthetic demo survey — calculations are derived from the uploaded coordinates; not official CMPDI survey observations.</div>
 
           <div style={{ marginTop: "10px", opacity: 0.7 }}>
             {surveyFileName
@@ -1331,7 +1380,7 @@ export default function GeomaticsSurvey() {
             <div style={styles.label}>Horizontal Width</div>
             <div style={styles.value}>
               {geometry.width !== null
-                ? `${formatNumber(geometry.width, 2)} ${analysis.coordinateType === "Easting / Northing" ? "m" : "deg"}`
+                ? `${formatNumber(geometry.width, 2)} m`
                 : "—"}
             </div>
           </div>
@@ -1339,7 +1388,7 @@ export default function GeomaticsSurvey() {
             <div style={styles.label}>Horizontal Height</div>
             <div style={styles.value}>
               {geometry.height !== null
-                ? `${formatNumber(geometry.height, 2)} ${analysis.coordinateType === "Easting / Northing" ? "m" : "deg"}`
+                ? `${formatNumber(geometry.height, 2)} m`
                 : "—"}
             </div>
           </div>
@@ -1356,7 +1405,7 @@ export default function GeomaticsSurvey() {
             <div style={styles.label}>Bounding Area</div>
             <div style={styles.value}>
               {geometry.area !== null
-                ? `${formatNumber(geometry.area, 2)} ${analysis.coordinateType === "Easting / Northing" ? "m²" : "deg²"}`
+                ? `${formatNumber(geometry.area, 2)} m²`
                 : "—"}
             </div>
           </div>
@@ -1364,7 +1413,7 @@ export default function GeomaticsSurvey() {
             <div style={styles.label}>Bounding Perimeter</div>
             <div style={styles.value}>
               {geometry.perimeter !== null
-                ? `${formatNumber(geometry.perimeter, 2)} ${analysis.coordinateType === "Easting / Northing" ? "m" : "deg"}`
+                ? `${formatNumber(geometry.perimeter, 2)} m`
                 : "—"}
             </div>
           </div>
@@ -1656,7 +1705,7 @@ export default function GeomaticsSurvey() {
       <div style={styles.section}>
         <h2 style={styles.sectionTitle}>Step 2 Status</h2>
         <p style={styles.sectionText}>
-          Survey data is kept separate from the existing 1,000-record mining
+          Survey data is kept separate from the existing 1,200-record mining
           dataset. No coordinates or elevations are fabricated.
         </p>
 

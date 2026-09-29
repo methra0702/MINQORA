@@ -279,14 +279,47 @@ SYSTEM_PROMPT = """
 You are MINQORA Brain 2, an AI assistant for geological and mining intelligence.
 
 Rules:
-- Answer general mining questions naturally.
+- Answer general mining questions naturally and accurately.
 - Use supplied MINQORA data when provided.
 - Never invent factual mining values.
 - Distinguish source-backed values, MINQORA-derived calculations,
   and planning/demo assumptions.
 - Treat Brain 1 numerical results as deterministic analytical evidence.
-- Keep normal answers concise, usually 2-5 paragraphs or bullets.
+- Format answers for a professional mining dashboard, not as one long paragraph.
+- For questions asking for factors, steps, methods, considerations, causes,
+  advantages/disadvantages, or multiple items, use a numbered list.
+- Put each major item on its own line and add one short explanation below it.
+- Start with a short one-line summary when useful, then use numbered items.
+- End with a brief overall takeaway when useful.
+- Do NOT use Markdown bold markers such as **text**, Markdown headings, tables,
+  or raw JSON in the user-facing answer.
+- Use plain text labels such as "1. Coal Bed Characteristics".
+- Keep normal answers concise and easy to scan.
 """
+
+def format_user_facing_answer(answer: str) -> str:
+    """Normalize Ollama markdown into clean plain text for the React chat UI."""
+    if not answer:
+        return answer
+
+    text = answer.replace("\r\n", "\n").replace("\r", "\n")
+
+    # Remove markdown emphasis that the current frontend displays literally.
+    text = text.replace("**", "")
+    text = text.replace("__", "")
+
+    # Turn markdown headings into simple dashboard labels.
+    text = re.sub(r"^#{1,6}\s*", "", text, flags=re.MULTILINE)
+
+    # Put common bullet markers on clean separate lines.
+    text = re.sub(r"[ \t]+[-•]\s+", "\n• ", text)
+    text = re.sub(r"\n[ \t]+", "\n", text)
+
+    # Clean excessive blank lines while preserving readable sections.
+    text = re.sub(r"\n{3,}", "\n\n", text)
+
+    return text.strip()
+
 
 def call_text_model(messages: List[Dict[str, Any]]) -> str:
     payload = {
@@ -318,6 +351,7 @@ def call_text_model(messages: List[Dict[str, Any]]) -> str:
         )
 
     answer = r.json().get("message", {}).get("content", "").strip()
+    answer = format_user_facing_answer(answer)
 
     if not answer:
         raise HTTPException(
@@ -478,7 +512,7 @@ and explain that it is outside the mining-specific scope.
         "stream": False,
         "options": {
             "temperature": 0.1,
-            "num_predict": 320,
+            "num_predict": 160,
         },
         "keep_alive": "5m",
     }
@@ -487,7 +521,7 @@ and explain that it is outside the mining-specific scope.
         r = requests.post(
             f"{OLLAMA_URL}/api/chat",
             json=payload,
-            timeout=75,
+            timeout=180,
         )
     except requests.RequestException as exc:
         raise HTTPException(
@@ -1147,6 +1181,7 @@ def chat(request: ChatRequest):
             + f"\n\nBasis: {result['basis']}"
             + f"\n\nDisclaimer: {result['disclaimer']}"
         )
+        answer = format_user_facing_answer(answer)
         return {
             "brain": "MINQORA Brain 2",
             "answer": answer,
@@ -1193,7 +1228,7 @@ def chat(request: ChatRequest):
     # This makes questions such as "Which mine has the deepest seam?" fast
     # and prevents a 90-second LLM timeout from hiding a correct result.
     if brain1_result.get("answer"):
-        answer = brain1_result["answer"]
+        answer = format_user_facing_answer(brain1_result["answer"])
         return {
             "brain": "MINQORA Brain 2",
             "answer": answer,
@@ -1254,8 +1289,8 @@ if __name__ == "__main__":
     import uvicorn
 
     uvicorn.run(
-        "brain2_server:app",
+        app,
         host="127.0.0.1",
         port=8001,
-        reload=True,
+        reload=False,
     )

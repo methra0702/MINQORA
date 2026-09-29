@@ -96,10 +96,7 @@ function Brain2() {
         {
           role: "assistant",
           brain: "MINQORA BRAIN 2",
-          text:
-            data.file_type === "document"
-              ? `📄 ${data.filename} uploaded. Ask me a question about this document.`
-              : `🖼 ${data.filename} uploaded. Use "Analyze Photo" below to inspect it.`,
+          text: `📄 ${data.filename} uploaded. Ask me a question about this document.`,
         },
       ]);
     } catch (error) {
@@ -119,60 +116,6 @@ function Brain2() {
     } finally {
       setUploading(false);
       event.target.value = "";
-    }
-  };
-
-  const analyzePhoto = async (attachment) => {
-    if (!attachment || attachment.fileType !== "image") return;
-
-    setLoading(true);
-
-    try {
-      const response = await fetch(
-        `${BRAIN2_API}/analyze-image/${encodeURIComponent(
-          attachment.storedFilename
-        )}`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            filename: attachment.storedFilename,
-            question:
-              question.trim() ||
-              "Analyze this image. Describe visible objects, text, geological/mining features, equipment, engineering details, and safety-relevant information. Clearly state uncertainty.",
-          }),
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error(await getErrorMessage(response));
-      }
-
-      const data = await response.json();
-
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: "assistant",
-          brain: "MINQORA PHOTO INTELLIGENCE",
-          text: data.answer,
-        },
-      ]);
-    } catch (error) {
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: "system",
-          brain: "SYSTEM",
-          text: `Photo intelligence error: ${
-            error?.message || "Unable to analyze photo."
-          }`,
-        },
-      ]);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -415,7 +358,7 @@ function Brain2() {
           <input
             ref={fileInputRef}
             type="file"
-            accept=".pdf,.docx,.txt,.csv,.json,.md,.png,.jpg,.jpeg,.webp"
+            accept=".pdf,.docx,.txt,.csv,.json,.md"
             onChange={uploadFile}
             style={{ display: "none" }}
           />
@@ -428,18 +371,6 @@ function Brain2() {
             {uploading ? "Uploading..." : "📎 Upload Document / Photo"}
           </button>
 
-          {attachments
-            .filter((a) => a.fileType === "image")
-            .map((attachment) => (
-              <button
-                key={attachment.id}
-                className="secondary-button"
-                onClick={() => analyzePhoto(attachment)}
-                disabled={loading}
-              >
-                🔎 Analyze Photo
-              </button>
-            ))}
 
           <button className="secondary-button" onClick={downloadChat}>
             ⬇ Download Chat
@@ -460,7 +391,7 @@ function Brain2() {
                 }}
               >
                 <span>
-                  {attachment.fileType === "image" ? "🖼️" : "📄"}{" "}
+                  📄{" "}
                   {attachment.filename}
                 </span>
 

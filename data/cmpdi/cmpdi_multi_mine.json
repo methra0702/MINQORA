@@ -1,14 +1,13 @@
 {
   "dataset_name": "MINQORA CMPDI Multi-Mine Real Data",
-  "version": "2.1.0-verified-seams",
+  "version": "1.0",
   "description": "Source-traceable public CMPDI/Ministry of Coal geological and historical data for six Odisha coal blocks.",
   "data_policy": {
     "real_data_only": true,
     "missing_values": "N/A",
     "historical_values_preserved": true,
     "conflicting_source_values_preserved": true,
-    "no_fabricated_production_recovery_ash_moisture_density_coordinates_dtm_or_risk": true,
-    "verified_seam_policy": "Only government-source-supported seam identifiers/reserves are included; unavailable fields remain null."
+    "no_fabricated_production_recovery_ash_moisture_density_coordinates_dtm_or_risk": true
   },
   "mines": [
     {
@@ -368,10 +367,7 @@
           "exploration_status": "Partly Explored",
           "source": "CMPDI CCBIS public block information"
         }
-      ],
-      "seam_data_status": "Official mine-dossier/basic exploration data exists, but a complete seam-wise public table has not been verified from the currently accessible indexed government documents. Do not fabricate seam rows.",
-      "seam_source": "Ministry of Coal auction query responses / mine dossier references",
-      "seam_source_url": "https://www.coal.nic.in/sites/default/files/2021-05/Response-to-Queries.pdf"
+      ]
     },
     {
       "id": 3,
@@ -395,47 +391,7 @@
         "coordinates_available": false,
         "dtm_available": false
       },
-      "seams": [
-        {
-          "seam": "IX",
-          "thickness_min_m": null,
-          "thickness_max_m": null,
-          "depth_min_m": 15.0,
-          "depth_max_m": null,
-          "geological_reserve_mt": null,
-          "grade": null,
-          "source": "Ministry of Coal - Chendipada-I & II block note",
-          "source_url": "https://www.coal.nic.in/sites/default/files/2019-09/17-01-2017.pdf",
-          "source_year": 2017,
-          "data_status": "official_seam_identifier"
-        },
-        {
-          "seam": "IIIB (Barakar)",
-          "thickness_min_m": null,
-          "thickness_max_m": null,
-          "depth_min_m": 20.0,
-          "depth_max_m": 138.0,
-          "geological_reserve_mt": null,
-          "grade": null,
-          "source": "Ministry of Coal - Chendipada-I & II block note",
-          "source_url": "https://www.coal.nic.in/sites/default/files/2019-09/17-01-2017.pdf",
-          "source_year": 2017,
-          "data_status": "official_seam_identifier"
-        },
-        {
-          "seam": "I (Karharbari) - splits",
-          "thickness_min_m": null,
-          "thickness_max_m": null,
-          "depth_min_m": 80.0,
-          "depth_max_m": 265.0,
-          "geological_reserve_mt": null,
-          "grade": null,
-          "source": "Ministry of Coal - Chendipada-I & II block note",
-          "source_url": "https://www.coal.nic.in/sites/default/files/2019-09/17-01-2017.pdf",
-          "source_year": 2017,
-          "data_status": "official_seam_identifier"
-        }
-      ],
+      "seams": [],
       "historical_snapshots": [
         {
           "year": 2021,
@@ -461,8 +417,7 @@
           "prc_mtpa": 40,
           "source": "CMPDI CCBIS public block information"
         }
-      ],
-      "seam_data_status": "Official source identifies topmost/bottommost seams and Karharbari Seam-I splits, but does not provide a complete seam-wise reserve table in the public note."
+      ]
     },
     {
       "id": 4,
@@ -510,10 +465,7 @@
           "prc_mtpa": 40,
           "source": "CMPDI CCBIS public block information"
         }
-      ],
-      "seam_data_status": "Official Ministry response: only basic exploration data of the original block is available; no geology report for the revised block was prepared, so a complete public seam table is not available.",
-      "seam_source": "Ministry of Coal - Auction Queries & Responses, 09-06-2023",
-      "seam_source_url": "https://www.coal.nic.in/sites/default/files/2023-06/09-06-2023b-auct.pdf"
+      ]
     },
     {
       "id": 5,
@@ -537,456 +489,7 @@
         "coordinates_available": false,
         "dtm_available": false
       },
-      "seams": [
-        {
-          "seam": "XV",
-          "thickness_min_m": null,
-          "thickness_max_m": null,
-          "depth_min_m": null,
-          "depth_max_m": null,
-          "geological_reserve_mt": 10.979,
-          "grade": null,
-          "mining_method": "OC",
-          "source": "Ministry of Coal - North of Arkhapal and Srirampur Coal Block Summary",
-          "source_url": "https://coal.nic.in/sites/default/files/2019-11/Mine_Summary_71_NORTH_OF_ARKHAPAL_Block.pdf",
-          "source_year": 2019,
-          "data_status": "official_seam_reserve"
-        },
-        {
-          "seam": "LXIV",
-          "thickness_min_m": null,
-          "thickness_max_m": null,
-          "depth_min_m": null,
-          "depth_max_m": null,
-          "geological_reserve_mt": 0.0,
-          "grade": null,
-          "mining_method": null,
-          "source": "Ministry of Coal - North of Arkhapal and Srirampur Coal Block Summary",
-          "source_url": "https://coal.nic.in/sites/default/files/2019-11/Mine_Summary_71_NORTH_OF_ARKHAPAL_Block.pdf",
-          "source_year": 2019,
-          "data_status": "official_seam_reserve"
-        },
-        {
-          "seam": "XIV",
-          "thickness_min_m": null,
-          "thickness_max_m": null,
-          "depth_min_m": null,
-          "depth_max_m": null,
-          "geological_reserve_mt": 2.048,
-          "grade": null,
-          "mining_method": null,
-          "source": "Ministry of Coal - North of Arkhapal and Srirampur Coal Block Summary",
-          "source_url": "https://coal.nic.in/sites/default/files/2019-11/Mine_Summary_71_NORTH_OF_ARKHAPAL_Block.pdf",
-          "source_year": 2019,
-          "data_status": "official_seam_reserve"
-        },
-        {
-          "seam": "XIII",
-          "thickness_min_m": null,
-          "thickness_max_m": null,
-          "depth_min_m": null,
-          "depth_max_m": null,
-          "geological_reserve_mt": 8.802,
-          "grade": null,
-          "mining_method": null,
-          "source": "Ministry of Coal - North of Arkhapal and Srirampur Coal Block Summary",
-          "source_url": "https://coal.nic.in/sites/default/files/2019-11/Mine_Summary_71_NORTH_OF_ARKHAPAL_Block.pdf",
-          "source_year": 2019,
-          "data_status": "official_seam_reserve"
-        },
-        {
-          "seam": "LXII",
-          "thickness_min_m": null,
-          "thickness_max_m": null,
-          "depth_min_m": null,
-          "depth_max_m": null,
-          "geological_reserve_mt": 0.496,
-          "grade": null,
-          "mining_method": null,
-          "source": "Ministry of Coal - North of Arkhapal and Srirampur Coal Block Summary",
-          "source_url": "https://coal.nic.in/sites/default/files/2019-11/Mine_Summary_71_NORTH_OF_ARKHAPAL_Block.pdf",
-          "source_year": 2019,
-          "data_status": "official_seam_reserve"
-        },
-        {
-          "seam": "XII",
-          "thickness_min_m": null,
-          "thickness_max_m": null,
-          "depth_min_m": null,
-          "depth_max_m": null,
-          "geological_reserve_mt": 27.439,
-          "grade": null,
-          "mining_method": null,
-          "source": "Ministry of Coal - North of Arkhapal and Srirampur Coal Block Summary",
-          "source_url": "https://coal.nic.in/sites/default/files/2019-11/Mine_Summary_71_NORTH_OF_ARKHAPAL_Block.pdf",
-          "source_year": 2019,
-          "data_status": "official_seam_reserve"
-        },
-        {
-          "seam": "XI",
-          "thickness_min_m": null,
-          "thickness_max_m": null,
-          "depth_min_m": null,
-          "depth_max_m": null,
-          "geological_reserve_mt": 25.271,
-          "grade": null,
-          "mining_method": null,
-          "source": "Ministry of Coal - North of Arkhapal and Srirampur Coal Block Summary",
-          "source_url": "https://coal.nic.in/sites/default/files/2019-11/Mine_Summary_71_NORTH_OF_ARKHAPAL_Block.pdf",
-          "source_year": 2019,
-          "data_status": "official_seam_reserve"
-        },
-        {
-          "seam": "X",
-          "thickness_min_m": null,
-          "thickness_max_m": null,
-          "depth_min_m": null,
-          "depth_max_m": null,
-          "geological_reserve_mt": 17.65,
-          "grade": null,
-          "mining_method": null,
-          "source": "Ministry of Coal - North of Arkhapal and Srirampur Coal Block Summary",
-          "source_url": "https://coal.nic.in/sites/default/files/2019-11/Mine_Summary_71_NORTH_OF_ARKHAPAL_Block.pdf",
-          "source_year": 2019,
-          "data_status": "official_seam_reserve"
-        },
-        {
-          "seam": "IX",
-          "thickness_min_m": null,
-          "thickness_max_m": null,
-          "depth_min_m": null,
-          "depth_max_m": null,
-          "geological_reserve_mt": 18.386,
-          "grade": null,
-          "mining_method": null,
-          "source": "Ministry of Coal - North of Arkhapal and Srirampur Coal Block Summary",
-          "source_url": "https://coal.nic.in/sites/default/files/2019-11/Mine_Summary_71_NORTH_OF_ARKHAPAL_Block.pdf",
-          "source_year": 2019,
-          "data_status": "official_seam_reserve"
-        },
-        {
-          "seam": "VIII",
-          "thickness_min_m": null,
-          "thickness_max_m": null,
-          "depth_min_m": null,
-          "depth_max_m": null,
-          "geological_reserve_mt": 15.127,
-          "grade": null,
-          "mining_method": null,
-          "source": "Ministry of Coal - North of Arkhapal and Srirampur Coal Block Summary",
-          "source_url": "https://coal.nic.in/sites/default/files/2019-11/Mine_Summary_71_NORTH_OF_ARKHAPAL_Block.pdf",
-          "source_year": 2019,
-          "data_status": "official_seam_reserve"
-        },
-        {
-          "seam": "VII",
-          "thickness_min_m": null,
-          "thickness_max_m": null,
-          "depth_min_m": null,
-          "depth_max_m": null,
-          "geological_reserve_mt": 105.249,
-          "grade": null,
-          "mining_method": null,
-          "source": "Ministry of Coal - North of Arkhapal and Srirampur Coal Block Summary",
-          "source_url": "https://coal.nic.in/sites/default/files/2019-11/Mine_Summary_71_NORTH_OF_ARKHAPAL_Block.pdf",
-          "source_year": 2019,
-          "data_status": "official_seam_reserve"
-        },
-        {
-          "seam": "VIC",
-          "thickness_min_m": null,
-          "thickness_max_m": null,
-          "depth_min_m": null,
-          "depth_max_m": null,
-          "geological_reserve_mt": 6.167,
-          "grade": null,
-          "mining_method": null,
-          "source": "Ministry of Coal - North of Arkhapal and Srirampur Coal Block Summary",
-          "source_url": "https://coal.nic.in/sites/default/files/2019-11/Mine_Summary_71_NORTH_OF_ARKHAPAL_Block.pdf",
-          "source_year": 2019,
-          "data_status": "official_seam_reserve"
-        },
-        {
-          "seam": "VIB",
-          "thickness_min_m": null,
-          "thickness_max_m": null,
-          "depth_min_m": null,
-          "depth_max_m": null,
-          "geological_reserve_mt": 43.341,
-          "grade": null,
-          "mining_method": null,
-          "source": "Ministry of Coal - North of Arkhapal and Srirampur Coal Block Summary",
-          "source_url": "https://coal.nic.in/sites/default/files/2019-11/Mine_Summary_71_NORTH_OF_ARKHAPAL_Block.pdf",
-          "source_year": 2019,
-          "data_status": "official_seam_reserve"
-        },
-        {
-          "seam": "VIA",
-          "thickness_min_m": null,
-          "thickness_max_m": null,
-          "depth_min_m": null,
-          "depth_max_m": null,
-          "geological_reserve_mt": 64.384,
-          "grade": null,
-          "mining_method": null,
-          "source": "Ministry of Coal - North of Arkhapal and Srirampur Coal Block Summary",
-          "source_url": "https://coal.nic.in/sites/default/files/2019-11/Mine_Summary_71_NORTH_OF_ARKHAPAL_Block.pdf",
-          "source_year": 2019,
-          "data_status": "official_seam_reserve"
-        },
-        {
-          "seam": "LV",
-          "thickness_min_m": null,
-          "thickness_max_m": null,
-          "depth_min_m": null,
-          "depth_max_m": null,
-          "geological_reserve_mt": 1.324,
-          "grade": null,
-          "mining_method": null,
-          "source": "Ministry of Coal - North of Arkhapal and Srirampur Coal Block Summary",
-          "source_url": "https://coal.nic.in/sites/default/files/2019-11/Mine_Summary_71_NORTH_OF_ARKHAPAL_Block.pdf",
-          "source_year": 2019,
-          "data_status": "official_seam_reserve"
-        },
-        {
-          "seam": "VC",
-          "thickness_min_m": null,
-          "thickness_max_m": null,
-          "depth_min_m": null,
-          "depth_max_m": null,
-          "geological_reserve_mt": 8.519,
-          "grade": null,
-          "mining_method": null,
-          "source": "Ministry of Coal - North of Arkhapal and Srirampur Coal Block Summary",
-          "source_url": "https://coal.nic.in/sites/default/files/2019-11/Mine_Summary_71_NORTH_OF_ARKHAPAL_Block.pdf",
-          "source_year": 2019,
-          "data_status": "official_seam_reserve"
-        },
-        {
-          "seam": "VB",
-          "thickness_min_m": null,
-          "thickness_max_m": null,
-          "depth_min_m": null,
-          "depth_max_m": null,
-          "geological_reserve_mt": 103.683,
-          "grade": null,
-          "mining_method": null,
-          "source": "Ministry of Coal - North of Arkhapal and Srirampur Coal Block Summary",
-          "source_url": "https://coal.nic.in/sites/default/files/2019-11/Mine_Summary_71_NORTH_OF_ARKHAPAL_Block.pdf",
-          "source_year": 2019,
-          "data_status": "official_seam_reserve"
-        },
-        {
-          "seam": "VA",
-          "thickness_min_m": null,
-          "thickness_max_m": null,
-          "depth_min_m": null,
-          "depth_max_m": null,
-          "geological_reserve_mt": 61.374,
-          "grade": null,
-          "mining_method": null,
-          "source": "Ministry of Coal - North of Arkhapal and Srirampur Coal Block Summary",
-          "source_url": "https://coal.nic.in/sites/default/files/2019-11/Mine_Summary_71_NORTH_OF_ARKHAPAL_Block.pdf",
-          "source_year": 2019,
-          "data_status": "official_seam_reserve"
-        },
-        {
-          "seam": "LIV",
-          "thickness_min_m": null,
-          "thickness_max_m": null,
-          "depth_min_m": null,
-          "depth_max_m": null,
-          "geological_reserve_mt": 4.525,
-          "grade": null,
-          "mining_method": null,
-          "source": "Ministry of Coal - North of Arkhapal and Srirampur Coal Block Summary",
-          "source_url": "https://coal.nic.in/sites/default/files/2019-11/Mine_Summary_71_NORTH_OF_ARKHAPAL_Block.pdf",
-          "source_year": 2019,
-          "data_status": "official_seam_reserve"
-        },
-        {
-          "seam": "IVC",
-          "thickness_min_m": null,
-          "thickness_max_m": null,
-          "depth_min_m": null,
-          "depth_max_m": null,
-          "geological_reserve_mt": 50.717,
-          "grade": null,
-          "mining_method": null,
-          "source": "Ministry of Coal - North of Arkhapal and Srirampur Coal Block Summary",
-          "source_url": "https://coal.nic.in/sites/default/files/2019-11/Mine_Summary_71_NORTH_OF_ARKHAPAL_Block.pdf",
-          "source_year": 2019,
-          "data_status": "official_seam_reserve"
-        },
-        {
-          "seam": "IVB",
-          "thickness_min_m": null,
-          "thickness_max_m": null,
-          "depth_min_m": null,
-          "depth_max_m": null,
-          "geological_reserve_mt": 202.687,
-          "grade": null,
-          "mining_method": null,
-          "source": "Ministry of Coal - North of Arkhapal and Srirampur Coal Block Summary",
-          "source_url": "https://coal.nic.in/sites/default/files/2019-11/Mine_Summary_71_NORTH_OF_ARKHAPAL_Block.pdf",
-          "source_year": 2019,
-          "data_status": "official_seam_reserve"
-        },
-        {
-          "seam": "IVA",
-          "thickness_min_m": null,
-          "thickness_max_m": null,
-          "depth_min_m": null,
-          "depth_max_m": null,
-          "geological_reserve_mt": 36.495,
-          "grade": null,
-          "mining_method": null,
-          "source": "Ministry of Coal - North of Arkhapal and Srirampur Coal Block Summary",
-          "source_url": "https://coal.nic.in/sites/default/files/2019-11/Mine_Summary_71_NORTH_OF_ARKHAPAL_Block.pdf",
-          "source_year": 2019,
-          "data_status": "official_seam_reserve"
-        },
-        {
-          "seam": "IIID",
-          "thickness_min_m": null,
-          "thickness_max_m": null,
-          "depth_min_m": null,
-          "depth_max_m": null,
-          "geological_reserve_mt": 58.845,
-          "grade": null,
-          "mining_method": null,
-          "source": "Ministry of Coal - North of Arkhapal and Srirampur Coal Block Summary",
-          "source_url": "https://coal.nic.in/sites/default/files/2019-11/Mine_Summary_71_NORTH_OF_ARKHAPAL_Block.pdf",
-          "source_year": 2019,
-          "data_status": "official_seam_reserve"
-        },
-        {
-          "seam": "IIIC",
-          "thickness_min_m": null,
-          "thickness_max_m": null,
-          "depth_min_m": null,
-          "depth_max_m": null,
-          "geological_reserve_mt": 83.926,
-          "grade": null,
-          "mining_method": null,
-          "source": "Ministry of Coal - North of Arkhapal and Srirampur Coal Block Summary",
-          "source_url": "https://coal.nic.in/sites/default/files/2019-11/Mine_Summary_71_NORTH_OF_ARKHAPAL_Block.pdf",
-          "source_year": 2019,
-          "data_status": "official_seam_reserve"
-        },
-        {
-          "seam": "IIIB",
-          "thickness_min_m": null,
-          "thickness_max_m": null,
-          "depth_min_m": null,
-          "depth_max_m": null,
-          "geological_reserve_mt": 57.932,
-          "grade": null,
-          "mining_method": null,
-          "source": "Ministry of Coal - North of Arkhapal and Srirampur Coal Block Summary",
-          "source_url": "https://coal.nic.in/sites/default/files/2019-11/Mine_Summary_71_NORTH_OF_ARKHAPAL_Block.pdf",
-          "source_year": 2019,
-          "data_status": "official_seam_reserve"
-        },
-        {
-          "seam": "IIIA",
-          "thickness_min_m": null,
-          "thickness_max_m": null,
-          "depth_min_m": null,
-          "depth_max_m": null,
-          "geological_reserve_mt": 22.825,
-          "grade": null,
-          "mining_method": null,
-          "source": "Ministry of Coal - North of Arkhapal and Srirampur Coal Block Summary",
-          "source_url": "https://coal.nic.in/sites/default/files/2019-11/Mine_Summary_71_NORTH_OF_ARKHAPAL_Block.pdf",
-          "source_year": 2019,
-          "data_status": "official_seam_reserve"
-        },
-        {
-          "seam": "IIF",
-          "thickness_min_m": null,
-          "thickness_max_m": null,
-          "depth_min_m": null,
-          "depth_max_m": null,
-          "geological_reserve_mt": 39.978,
-          "grade": null,
-          "mining_method": null,
-          "source": "Ministry of Coal - North of Arkhapal and Srirampur Coal Block Summary",
-          "source_url": "https://coal.nic.in/sites/default/files/2019-11/Mine_Summary_71_NORTH_OF_ARKHAPAL_Block.pdf",
-          "source_year": 2019,
-          "data_status": "official_seam_reserve"
-        },
-        {
-          "seam": "IIE",
-          "thickness_min_m": null,
-          "thickness_max_m": null,
-          "depth_min_m": null,
-          "depth_max_m": null,
-          "geological_reserve_mt": 168.727,
-          "grade": null,
-          "mining_method": null,
-          "source": "Ministry of Coal - North of Arkhapal and Srirampur Coal Block Summary",
-          "source_url": "https://coal.nic.in/sites/default/files/2019-11/Mine_Summary_71_NORTH_OF_ARKHAPAL_Block.pdf",
-          "source_year": 2019,
-          "data_status": "official_seam_reserve"
-        },
-        {
-          "seam": "IID",
-          "thickness_min_m": null,
-          "thickness_max_m": null,
-          "depth_min_m": null,
-          "depth_max_m": null,
-          "geological_reserve_mt": 77.087,
-          "grade": null,
-          "mining_method": null,
-          "source": "Ministry of Coal - North of Arkhapal and Srirampur Coal Block Summary",
-          "source_url": "https://coal.nic.in/sites/default/files/2019-11/Mine_Summary_71_NORTH_OF_ARKHAPAL_Block.pdf",
-          "source_year": 2019,
-          "data_status": "official_seam_reserve"
-        },
-        {
-          "seam": "IIC",
-          "thickness_min_m": null,
-          "thickness_max_m": null,
-          "depth_min_m": null,
-          "depth_max_m": null,
-          "geological_reserve_mt": 65.15,
-          "grade": null,
-          "mining_method": null,
-          "source": "Ministry of Coal - North of Arkhapal and Srirampur Coal Block Summary",
-          "source_url": "https://coal.nic.in/sites/default/files/2019-11/Mine_Summary_71_NORTH_OF_ARKHAPAL_Block.pdf",
-          "source_year": 2019,
-          "data_status": "official_seam_reserve"
-        },
-        {
-          "seam": "IIB",
-          "thickness_min_m": null,
-          "thickness_max_m": null,
-          "depth_min_m": null,
-          "depth_max_m": null,
-          "geological_reserve_mt": 159.839,
-          "grade": null,
-          "mining_method": null,
-          "source": "Ministry of Coal - North of Arkhapal and Srirampur Coal Block Summary",
-          "source_url": "https://coal.nic.in/sites/default/files/2019-11/Mine_Summary_71_NORTH_OF_ARKHAPAL_Block.pdf",
-          "source_year": 2019,
-          "data_status": "official_seam_reserve"
-        },
-        {
-          "seam": "IIA",
-          "thickness_min_m": null,
-          "thickness_max_m": null,
-          "depth_min_m": null,
-          "depth_max_m": null,
-          "geological_reserve_mt": 75.19,
-          "grade": null,
-          "mining_method": null,
-          "source": "Ministry of Coal - North of Arkhapal and Srirampur Coal Block Summary",
-          "source_url": "https://coal.nic.in/sites/default/files/2019-11/Mine_Summary_71_NORTH_OF_ARKHAPAL_Block.pdf",
-          "source_year": 2019,
-          "data_status": "official_seam_reserve"
-        }
-      ],
+      "seams": [],
       "historical_snapshots": [
         {
           "year": 2021,
@@ -1020,8 +523,7 @@
           "prc_mtpa": 10,
           "source": "CMPDI CCBIS public block information"
         }
-      ],
-      "seam_data_status": "Official seam-level reserve table available; thickness/depth/grade fields were not present in the public summary table."
+      ]
     },
     {
       "id": 6,
@@ -1063,10 +565,7 @@
           "prc_mtpa": 12,
           "source": "Ministry of Coal auction presentation, 19-Apr-2022"
         }
-      ],
-      "seam_data_status": "Official mine-dossier/basic exploration data exists, but a complete seam-wise public table has not been verified from the currently accessible indexed government documents. Do not fabricate seam rows.",
-      "seam_source": "Ministry of Coal auction query responses / mine dossier references",
-      "seam_source_url": "https://www.coal.nic.in/sites/default/files/2021-05/Response-to-Queries.pdf"
+      ]
     }
   ],
   "source_metadata": {

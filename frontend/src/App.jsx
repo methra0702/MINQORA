@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import "./App.css";
 
 import MiningData from "./pages/MiningData";
-import CMPDIRealData from "./pages/CMPDIRealData";
 import Predict from "./pages/Predict";
 import Generate from "./pages/Generate";
 import GeologicalIntelligence from "./pages/GeologicalIntelligence";
@@ -1083,9 +1082,6 @@ function AppContent() {
       case "brain2":
         return <Brain2 />;
 
-      case "cmpdi-real":
-        return <CMPDIRealData />;
-
       case "predict":
         return <Predict />;
 
@@ -1198,10 +1194,6 @@ function AppContent() {
 
           <NavButton id="resource">
             Resource Evaluation
-          </NavButton>
-
-          <NavButton id="cmpdi-real">
-            Real CMPDI Data
           </NavButton>
 
           <NavButton id="geomatics">
