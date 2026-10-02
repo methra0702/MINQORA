@@ -14,7 +14,7 @@ import FinalIntegration from "./pages/FinalIntegration";
 import { WorkspaceProvider } from "./MINQORAWorkspaceContext";
 import MINQORAWorkspaceBar from "./MINQORAWorkspaceBar";
 
-const API_URL = "http://127.0.0.1:8000";
+const API_URL = "https://minqora-brain1.onrender.com";
 
 // ============================================================
 // BRAIN PHASES
@@ -127,36 +127,55 @@ function AppContent() {
   const normalizeRecord = (record) => ({
     ...record,
     id: record.id,
-    date: record.date || record.record_date || record.year || "",
-    mine_name: record.mine_name || record.mine || record.mineName || "Unknown",
-    seam: record.seam || record.seam_name || record.seamName || "Unknown",
+    date:
+      record.date ||
+      record.record_date ||
+      record.year ||
+      "",
+    mine_name:
+      record.mine_name ||
+      record.mine ||
+      record.mineName ||
+      "Unknown",
+    seam:
+      record.seam ||
+      record.seam_name ||
+      record.seamName ||
+      "Unknown",
+
     thickness: Number(
       record.thickness ??
         record.thickness_m ??
         record.seam_thickness ??
         0
     ),
+
     depth: Number(
       record.depth ??
         record.depth_m ??
         record.mining_depth ??
         0
     ),
+
     production: Number(
       record.production ??
         record.production_tonnes ??
         record.output ??
         0
     ),
+
     recovery: Number(
       record.recovery ??
         record.recovery_pct ??
         record.recovery_percent ??
         (record.recovery_factor != null
           ? Number(record.recovery_factor) *
-            (Number(record.recovery_factor) <= 1 ? 100 : 1)
+            (Number(record.recovery_factor) <= 1
+              ? 100
+              : 1)
           : 0)
     ),
+
     ash_content: Number(
       record.ash_content ??
         record.ash ??
@@ -164,14 +183,18 @@ function AppContent() {
         record.ash_percent ??
         0
     ),
+
     moisture: Number(
       record.moisture ??
         record.moisture_pct ??
         record.moisture_percent ??
         0
     ),
+
     risk_level: String(
-      record.risk_level || record.risk || "LOW"
+      record.risk_level ||
+        record.risk ||
+        "LOW"
     ).toUpperCase(),
   });
 
@@ -182,18 +205,26 @@ function AppContent() {
       );
 
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
+        throw new Error(
+          `HTTP ${response.status}`
+        );
       }
 
       const data = await response.json();
-      const normalizedRecords = (data.records || []).map(
-        normalizeRecord
-      );
+
+      const normalizedRecords =
+        (data.records || []).map(
+          normalizeRecord
+        );
 
       setRecords(normalizedRecords);
       setAllRecords(normalizedRecords);
     } catch (error) {
-      console.error("Mining data load error:", error);
+      console.error(
+        "Mining data load error:",
+        error
+      );
+
       setRecords([]);
       setAllRecords([]);
     }
@@ -212,9 +243,13 @@ function AppContent() {
       if (!response.ok) return;
 
       const data = await response.json();
+
       setStatistics(data);
     } catch (error) {
-      console.error("Statistics load error:", error);
+      console.error(
+        "Statistics load error:",
+        error
+      );
     }
   };
 
@@ -231,14 +266,19 @@ function AppContent() {
   // DOWNLOAD TEXT
   // ============================================================
 
-  const downloadText = (filename, content) => {
+  const downloadText = (
+    filename,
+    content
+  ) => {
     const blob = new Blob([content], {
       type: "text/plain",
     });
 
-    const url = URL.createObjectURL(blob);
+    const url =
+      URL.createObjectURL(blob);
 
-    const link = document.createElement("a");
+    const link =
+      document.createElement("a");
 
     link.href = url;
     link.download = filename;
@@ -260,7 +300,12 @@ function AppContent() {
     const cleanQuestion =
       brain1Question.trim();
 
-    if (!cleanQuestion || brain1Loading) return;
+    if (
+      !cleanQuestion ||
+      brain1Loading
+    ) {
+      return;
+    }
 
     setBrain1Loading(true);
     setBrain1Answer("");
@@ -272,7 +317,8 @@ function AppContent() {
           method: "POST",
 
           headers: {
-            "Content-Type": "application/json",
+            "Content-Type":
+              "application/json",
           },
 
           body: JSON.stringify({
@@ -281,7 +327,8 @@ function AppContent() {
         }
       );
 
-      const data = await response.json();
+      const data =
+        await response.json();
 
       if (!response.ok) {
         throw new Error(
@@ -308,9 +355,12 @@ function AppContent() {
   // ============================================================
 
   const askMINQORA = async () => {
-    const cleanQuestion = question.trim();
+    const cleanQuestion =
+      question.trim();
 
-    if (!cleanQuestion || loading) return;
+    if (!cleanQuestion || loading) {
+      return;
+    }
 
     setMessages((previous) => [
       ...previous,
@@ -331,7 +381,8 @@ function AppContent() {
           method: "POST",
 
           headers: {
-            "Content-Type": "application/json",
+            "Content-Type":
+              "application/json",
           },
 
           body: JSON.stringify({
@@ -340,7 +391,8 @@ function AppContent() {
         }
       );
 
-      const data = await response.json();
+      const data =
+        await response.json();
 
       if (!response.ok) {
         throw new Error(
@@ -354,7 +406,8 @@ function AppContent() {
         {
           role: "assistant",
           brain:
-            data.brain || "MINQORA",
+            data.brain ||
+            "MINQORA",
           text:
             data.answer ||
             "No response generated.",
@@ -406,18 +459,23 @@ function AppContent() {
       source.reduce(
         (sum, record) =>
           sum +
-          numberValue(record.production),
+          numberValue(
+            record.production
+          ),
         0
       );
 
     const averageProduction =
-      totalProduction / source.length;
+      totalProduction /
+      source.length;
 
     const averageRecovery =
       source.reduce(
         (sum, record) =>
           sum +
-          numberValue(record.recovery),
+          numberValue(
+            record.recovery
+          ),
         0
       ) / source.length;
 
@@ -433,7 +491,9 @@ function AppContent() {
       source.reduce(
         (sum, record) =>
           sum +
-          numberValue(record.thickness),
+          numberValue(
+            record.thickness
+          ),
         0
       ) / source.length;
 
@@ -451,7 +511,8 @@ function AppContent() {
 
     source.forEach((record) => {
       const mine =
-        record.mine_name || "Unknown";
+        record.mine_name ||
+        "Unknown";
 
       if (!mines[mine]) {
         mines[mine] = {
@@ -467,16 +528,22 @@ function AppContent() {
       mines[mine].records += 1;
 
       mines[mine].production +=
-        numberValue(record.production);
+        numberValue(
+          record.production
+        );
 
       mines[mine].recovery +=
-        numberValue(record.recovery);
+        numberValue(
+          record.recovery
+        );
 
       mines[mine].depth +=
         numberValue(record.depth);
 
       mines[mine].thickness +=
-        numberValue(record.thickness);
+        numberValue(
+          record.thickness
+        );
     });
 
     const mineComparison =
@@ -514,10 +581,14 @@ function AppContent() {
 
     source.forEach((record) => {
       const risk = String(
-        record.risk_level || "LOW"
+        record.risk_level ||
+          "LOW"
       ).toUpperCase();
 
-      if (risks[risk] !== undefined) {
+      if (
+        risks[risk] !==
+        undefined
+      ) {
         risks[risk] += 1;
       }
     });
@@ -528,7 +599,9 @@ function AppContent() {
           level,
           count,
           percentage:
-            (count / source.length) * 100,
+            (count /
+              source.length) *
+            100,
         })
       );
 
@@ -541,7 +614,8 @@ function AppContent() {
       averageAsh,
 
       bestMine:
-        mineComparison[0]?.name ||
+        mineComparison[0]
+          ?.name ||
         "No data",
 
       mineComparison,
@@ -553,14 +627,19 @@ function AppContent() {
   // NAVIGATION BUTTON
   // ============================================================
 
-  const NavButton = ({ id, children }) => (
+  const NavButton = ({
+    id,
+    children,
+  }) => (
     <button
       className={`nav-button ${
         activePage === id
           ? "active"
           : ""
       }`}
-      onClick={() => setActivePage(id)}
+      onClick={() =>
+        setActivePage(id)
+      }
     >
       {children}
     </button>
@@ -583,8 +662,9 @@ function AppContent() {
           </h1>
 
           <p className="page-description">
-            Central command center for mining
-            intelligence, analysis and decision
+            Central command center
+            for mining intelligence,
+            analysis and decision
             support.
           </p>
         </div>
@@ -606,7 +686,8 @@ function AppContent() {
           </h2>
 
           <p>
-            Stored mining information
+            Stored mining
+            information
           </p>
         </div>
 
@@ -616,11 +697,19 @@ function AppContent() {
           </span>
 
           <h2>
-            {new Set(allRecords.map((record) => record.mine_name)).size}
+            {
+              new Set(
+                allRecords.map(
+                  (record) =>
+                    record.mine_name
+                )
+              ).size
+            }
           </h2>
 
           <p>
-            Mining locations analyzed
+            Mining locations
+            analyzed
           </p>
         </div>
 
@@ -634,7 +723,8 @@ function AppContent() {
           </h2>
 
           <p>
-            Mining intelligence engine
+            Mining intelligence
+            engine
           </p>
         </div>
 
@@ -653,7 +743,8 @@ function AppContent() {
           </h2>
 
           <p>
-            Total analyzed production
+            Total analyzed
+            production
           </p>
         </div>
       </div>
@@ -709,7 +800,9 @@ function AppContent() {
             </span>
 
             <strong>
-              {analytics.averageDepth.toFixed(2)}
+              {analytics.averageDepth.toFixed(
+                2
+              )}
             </strong>
           </div>
         </div>
@@ -721,34 +814,38 @@ function AppContent() {
         </p>
 
         <h2>
-          Brain 1 — 9 Intelligence Phases
+          Brain 1 — 9 Intelligence
+          Phases
         </h2>
 
         <div className="dashboard-phases">
-          {brainPhases.map((phase) => (
-            <div
-              key={phase.number}
-              className={`dashboard-phase ${
-                phase.status === "ACTIVE"
-                  ? "current"
-                  : ""
-              }`}
-            >
-              <span>
-                {phase.number}
-              </span>
+          {brainPhases.map(
+            (phase) => (
+              <div
+                key={phase.number}
+                className={`dashboard-phase ${
+                  phase.status ===
+                  "ACTIVE"
+                    ? "current"
+                    : ""
+                }`}
+              >
+                <span>
+                  {phase.number}
+                </span>
 
-              <div>
-                <strong>
-                  {phase.title}
-                </strong>
+                <div>
+                  <strong>
+                    {phase.title}
+                  </strong>
 
-                <small>
-                  {phase.status}
-                </small>
+                  <small>
+                    {phase.status}
+                  </small>
+                </div>
               </div>
-            </div>
-          ))}
+            )
+          )}
         </div>
       </section>
     </div>
@@ -767,12 +864,14 @@ function AppContent() {
           </p>
 
           <h1>
-            Mining Intelligence Dashboard
+            Mining Intelligence
+            Dashboard
           </h1>
 
           <p>
-            Brain 1 analyzes actual mining
-            records and generates mining
+            Brain 1 analyzes actual
+            mining records and
+            generates mining
             intelligence.
           </p>
         </div>
@@ -785,7 +884,8 @@ function AppContent() {
 
       <section className="brain1-section">
         <p className="eyebrow">
-          MINING INTELLIGENCE OVERVIEW
+          MINING INTELLIGENCE
+          OVERVIEW
         </p>
 
         <h2>
@@ -839,7 +939,9 @@ function AppContent() {
             </span>
 
             <strong>
-              {analytics.averageAsh.toFixed(2)}
+              {analytics.averageAsh.toFixed(
+                2
+              )}
               %
             </strong>
           </div>
@@ -848,11 +950,13 @@ function AppContent() {
 
       <section className="brain1-section">
         <p className="eyebrow">
-          PHASE 2 — MINING INTELLIGENCE
+          PHASE 2 — MINING
+          INTELLIGENCE
         </p>
 
         <h2>
-          Mine Performance Comparison
+          Mine Performance
+          Comparison
         </h2>
 
         <div className="data-table-container">
@@ -861,19 +965,28 @@ function AppContent() {
               <tr>
                 <th>Mine</th>
                 <th>Records</th>
-                <th>Avg Production</th>
-                <th>Avg Recovery</th>
+                <th>
+                  Avg Production
+                </th>
+                <th>
+                  Avg Recovery
+                </th>
                 <th>Avg Depth</th>
-                <th>Avg Thickness</th>
+                <th>
+                  Avg Thickness
+                </th>
               </tr>
             </thead>
 
             <tbody>
-              {analytics.mineComparison.length >
-              0 ? (
+              {analytics
+                .mineComparison
+                .length > 0 ? (
                 analytics.mineComparison.map(
                   (mine) => (
-                    <tr key={mine.name}>
+                    <tr
+                      key={mine.name}
+                    >
                       <td>
                         {mine.name}
                       </td>
@@ -912,7 +1025,8 @@ function AppContent() {
               ) : (
                 <tr>
                   <td colSpan="6">
-                    No mining data available.
+                    No mining data
+                    available.
                   </td>
                 </tr>
               )}
@@ -948,10 +1062,13 @@ function AppContent() {
                 </h3>
 
                 <p>
-                  {risk.percentage.toFixed(2)}%
-                  of the analyzed mining records
-                  are classified as {risk.level}
-                  risk.
+                  {risk.percentage.toFixed(
+                    2
+                  )}
+                  % of the analyzed
+                  mining records are
+                  classified as{" "}
+                  {risk.level} risk.
                 </p>
               </div>
             )
@@ -959,28 +1076,34 @@ function AppContent() {
         </div>
       </section>
 
+      {/* ====================================================== */}
+      {/* ASK BRAIN 1 */}
+      {/* ====================================================== */}
+
       <section className="brain1-question-panel">
         <p className="eyebrow">
           ASK BRAIN 1
         </p>
 
         <h2>
-          Mining Intelligence Questions
+          Mining Intelligence
+          Questions
         </h2>
 
         <p>
-          Ask Brain 1 questions about your actual
-          mining data.
+          Ask Brain 1 questions
+          about your actual mining
+          data.
         </p>
 
         <div className="brain1-input-row">
           <textarea
             value={brain1Question}
-            onChange={(event) =>
+            onChange={(event) => {
               setBrain1Question(
                 event.target.value
-              )
-            }
+              );
+            }}
             placeholder="Example: Which mine has the highest production?"
           />
 
@@ -1027,38 +1150,42 @@ function AppContent() {
         </p>
 
         <h2>
-          Complete 9-Phase Intelligence System
+          Complete 9-Phase
+          Intelligence System
         </h2>
 
         <div className="brain-phases-grid">
-          {brainPhases.map((phase) => (
-            <div
-              key={phase.number}
-              className={`brain-phase-card ${
-                phase.status === "ACTIVE"
-                  ? "active-phase"
-                  : ""
-              }`}
-            >
-              <div className="phase-card-top">
-                <span>
-                  {phase.number}
-                </span>
+          {brainPhases.map(
+            (phase) => (
+              <div
+                key={phase.number}
+                className={`brain-phase-card ${
+                  phase.status ===
+                  "ACTIVE"
+                    ? "active-phase"
+                    : ""
+                }`}
+              >
+                <div className="phase-card-top">
+                  <span>
+                    {phase.number}
+                  </span>
 
-                <small>
-                  {phase.status}
-                </small>
+                  <small>
+                    {phase.status}
+                  </small>
+                </div>
+
+                <h3>
+                  {phase.title}
+                </h3>
+
+                <p>
+                  {phase.description}
+                </p>
               </div>
-
-              <h3>
-                {phase.title}
-              </h3>
-
-              <p>
-                {phase.description}
-              </p>
-            </div>
-          ))}
+            )
+          )}
         </div>
       </section>
     </div>
@@ -1068,16 +1195,26 @@ function AppContent() {
   // PAGE RENDERER
   // ============================================================
 
+  /*
+   * IMPORTANT:
+   * Brain1Page and Dashboard are defined inside AppContent.
+   * Calling them directly prevents React from remounting the
+   * component on every keystroke.
+   *
+   * This fixes the Brain 1 textarea issue where only one
+   * character could be typed at a time.
+   */
+
   const renderPage = () => {
     switch (activePage) {
       case "dashboard":
-        return <Dashboard />;
+        return Dashboard();
 
       case "data":
         return <MiningData />;
 
       case "brain1":
-        return <Brain1Page />;
+        return Brain1Page();
 
       case "brain2":
         return <Brain2 />;
@@ -1089,7 +1226,9 @@ function AppContent() {
         return <Generate />;
 
       case "geological":
-        return <GeologicalIntelligence />;
+        return (
+          <GeologicalIntelligence />
+        );
 
       case "resource":
         return <ResourceEvaluation />;
@@ -1098,16 +1237,22 @@ function AppContent() {
         return <GeomaticsSurvey />;
 
       case "mine-design":
-        return <MineDesignOptimization />;
+        return (
+          <MineDesignOptimization />
+        );
 
       case "visualization":
         return <Visualization3D />;
 
       case "integration":
-        return <FinalIntegration onNavigate={setActivePage} />;
+        return (
+          <FinalIntegration
+            onNavigate={setActivePage}
+          />
+        );
 
       default:
-        return <Dashboard />;
+        return Dashboard();
     }
   };
 
@@ -1117,6 +1262,7 @@ function AppContent() {
 
   return (
     <div className="app">
+
       {/* ====================================================== */}
       {/* SIDEBAR */}
       {/* ====================================================== */}
@@ -1183,13 +1329,16 @@ function AppContent() {
           </NavButton>
         </div>
 
+        {/* GEOLOGICAL */}
+
         <div className="nav-section">
           <p className="nav-title">
             GEOLOGICAL
           </p>
 
           <NavButton id="geological">
-            Geological Intelligence
+            Geological
+            Intelligence
           </NavButton>
 
           <NavButton id="resource">
@@ -1201,9 +1350,12 @@ function AppContent() {
           </NavButton>
 
           <NavButton id="mine-design">
-            Mine Design & Optimization
+            Mine Design &
+            Optimization
           </NavButton>
         </div>
+
+        {/* VISUALIZATION */}
 
         <div className="nav-section">
           <p className="nav-title">
@@ -1211,9 +1363,12 @@ function AppContent() {
           </p>
 
           <NavButton id="visualization">
-            Visualization & 2D/3D Models
+            Visualization & 2D/3D
+            Models
           </NavButton>
         </div>
+
+        {/* INTEGRATION */}
 
         <div className="nav-section">
           <p className="nav-title">
@@ -1221,11 +1376,12 @@ function AppContent() {
           </p>
 
           <NavButton id="integration">
-            Final MINQORA Integration
+            Final MINQORA
+            Integration
           </NavButton>
         </div>
 
-        {/* ASK PREDICT GENERATE */}
+        {/* AI TOOLS */}
 
         <div className="nav-section">
           <p className="nav-title">
@@ -1247,7 +1403,8 @@ function AppContent() {
           </strong>
 
           <span>
-            Mining Intelligence System
+            Mining Intelligence
+            System
           </span>
         </div>
       </aside>
@@ -1278,12 +1435,17 @@ function AppContent() {
 
         <div className="content">
           <MINQORAWorkspaceBar />
+
           {renderPage()}
         </div>
       </main>
     </div>
   );
 }
+
+// ============================================================
+// ROOT APP
+// ============================================================
 
 function App() {
   return (
