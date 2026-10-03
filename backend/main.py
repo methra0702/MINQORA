@@ -11,7 +11,7 @@ from collections import defaultdict
 try:
     from .database import initialize_database, fetch_mining_records, get_database_status
 except ImportError:
-    from database import initialize_database, fetch_mining_records, get_database_status
+    from backend.database import initialize_database, fetch_mining_records, get_database_status
 
 
 # ============================================================
@@ -205,29 +205,14 @@ def _to_number(value):
 
 
 def load_mining_data():
-    """Load MINQORA mining records from the SQLite database.
-
-    The CSV dataset is used only as the initial seed/import source.
-    Runtime analytics read from the database so Brain 1 is database-backed.
-    """
-
     try:
         initialize_database()
         records = fetch_mining_records()
-
-        print("=" * 60)
-        print("MINQORA DATABASE LOADED")
-        print("Backend: SQLite")
-        print("Records:", len(records))
-        print("Status: DATABASE-BACKED")
-        print("=" * 60)
-
+        print("DATABASE-BACKED RECORDS:", len(records))
         return records
-
     except Exception as error:
-        print("MINQORA DATABASE LOAD ERROR:", error)
+        print("DATABASE LOAD ERROR:", error)
         return []
-
 
 # ============================================================
 # DATABASE STATUS
@@ -1616,6 +1601,9 @@ def generate_resource_estimation(question, records):
     resource_block_summary = "\n".join(block_lines)
     assumptions_summary = " ".join("• " + item for item in assumptions)
 
+    block_lines_text = "\n".join(block_lines)
+    assumptions_text = " ".join("• " + item for item in assumptions)
+
     answer = f"""
 ⛏️ PHASE 5A — RESOURCE ESTIMATION FOUNDATION
 
@@ -1651,7 +1639,7 @@ Estimated Gross Tonnage:
 
 RESOURCE BLOCK SUMMARY:
 
-{"\n".join(block_lines)}
+{block_lines_text}
 
 ESTIMATION METHOD:
 
@@ -1663,7 +1651,7 @@ Recoverable Tonnage = Gross Tonnage × Recovery Factor
 
 ASSUMPTIONS & LIMITATIONS:
 
-{" ".join("• " + item for item in assumptions)}
+{assumptions_text}
 
 PHASE 5A OUTPUT:
 
