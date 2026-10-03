@@ -482,7 +482,65 @@ def select_tools(question: str) -> List[str]:
 
     """Simple deterministic agent policy for Phase 17."""
 
+    # Geological overview questions
+    geological_overview_terms = [
+        "geological characteristics",
+        "geological features",
+        "geological properties",
+        "geology of",
+        "geological overview",
+        "coal seams",
+        "seam characteristics",
+        "stratigraphic",
+        "strike and dip",
+        "boreholes",
+    ]
 
+    if any(term in q_lower for term in geological_overview_terms):
+        geological_context = """
+MINQORA PROJECT GEOLOGICAL CONTEXT — MACHHAKATA
+
+Mine: Machhakata
+Location: Odisha
+Area: 19.99 km²
+Exploration status: Explored
+Exploration grade: G1
+Geological exploration category: G11
+Mining method: Open Cast
+PRC: 30 MTPA
+Boreholes: 193
+Total drilling: 39,602 m
+Borehole density: approximately 9.5 boreholes/km²
+Geological strike: approximately E-W
+Dip: approximately 3–5°
+Published geological resource: 1,369 MT
+
+Use these values as MINQORA project/source-derived context.
+Do not invent additional geological values.
+Clearly distinguish published/source-derived information from
+analytical or planning assumptions.
+"""
+
+        messages.append({
+            "role": "user",
+            "content": (
+                "GEOLOGICAL PROJECT CONTEXT:\n"
+                f"{geological_context}\n\n"
+                f"USER QUESTION:\n{question}"
+            ),
+        })
+
+        answer = call_text_model(messages)
+
+        return {
+            "brain": "MINQORA Brain 2",
+            "answer": format_user_facing_answer(answer),
+            "response": format_user_facing_answer(answer),
+            "intent": "geological_overview",
+            "source": "Brain 2 + MINQORA Geological Context + Gemini",
+            "evidence": [],
+            "model": TEXT_MODEL,
+        }
 
     if not is_data_query(question):
 
