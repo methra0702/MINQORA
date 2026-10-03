@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+﻿from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -7,6 +7,11 @@ import json
 import os
 import re
 from collections import defaultdict
+
+try:
+    from .database import initialize_database, fetch_mining_records, get_database_status
+except ImportError:
+    from database import initialize_database, fetch_mining_records, get_database_status
 
 
 # ============================================================
@@ -200,129 +205,42 @@ def _to_number(value):
 
 
 def load_mining_data():
+    """Load MINQORA mining records from the SQLite database.
+
+    The CSV dataset is used only as the initial seed/import source.
+    Runtime analytics read from the database so Brain 1 is database-backed.
     """
-    Load the 1,200-row MINQORA unified analytical dataset.
-
-    The underlying geological parameters are derived from the
-    source-derived Machhakata geological dataset. Analytical fields
-    are explicitly marked SOURCE_DERIVED_ANALYTICAL.
-    """
-
-    data_file = os.path.join(
-        BASE_DIR,
-        "data",
-        "minqora_unified_1200.csv"
-    )
-
-    if not os.path.isfile(data_file):
-        print("MINQORA DATASET NOT FOUND:", data_file)
-        return []
-
-    records = []
 
     try:
-        with open(
-            data_file,
-            "r",
-            encoding="utf-8-sig",
-            newline=""
-        ) as file:
-
-            reader = csv.DictReader(file)
-
-            for row in reader:
-
-                def num(value):
-                    try:
-                        return float(value)
-                    except Exception:
-                        return None
-
-                record = {
-                    "id": row.get("record_id"),
-                    "record_id": row.get("record_id"),
-
-                    "date": row.get("date"),
-                    "year": num(row.get("year")),
-                    "month": row.get("month"),
-
-                    "mine": row.get("mine_name"),
-                    "mine_name": row.get("mine_name"),
-
-                    "state": row.get("state"),
-                    "location": row.get("location"),
-
-                    "seam": row.get("seam"),
-
-                    "thickness_m": num(row.get("thickness_m")),
-                    "coal_thickness_m": num(row.get("coal_thickness_m")),
-
-                    "depth_m": num(row.get("depth_m")),
-
-                    "production_tonnes":
-                        num(row.get("production_tonnes")),
-
-                    "recovery":
-                        num(row.get("recovery")),
-
-                    "recovery_percent":
-                        num(row.get("recovery_percent")),
-
-                    "ash_content":
-                        num(row.get("ash_content")),
-
-                    "ash_percent":
-                        num(row.get("ash_percent")),
-
-                    "moisture":
-                        num(row.get("moisture")),
-
-                    "moisture_percent":
-                        num(row.get("moisture_percent")),
-
-                    "calorific_value":
-                        num(row.get("calorific_value_kcal_kg")),
-
-                    "geological_reserve_mt":
-                        num(row.get("geological_reserve_mt")),
-
-                    "reserve_mt":
-                        num(row.get("geological_reserve_mt")),
-
-                    "grade": row.get("grade"),
-                    "exploration_grade":
-                        row.get("exploration_grade"),
-
-                    "risk_level":
-                        row.get("risk_level"),
-
-                    "source":
-                        row.get("source"),
-
-                    "source_url":
-                        row.get("source_url"),
-
-                    "source_status":
-                        row.get("source_status"),
-
-                    "record_type":
-                        "cmpdi_derived_analytical"
-                }
-
-                records.append(record)
+        initialize_database()
+        records = fetch_mining_records()
 
         print("=" * 60)
-        print("MINQORA UNIFIED DATA LOADED")
-        print("Source:", data_file)
+        print("MINQORA DATABASE LOADED")
+        print("Backend: SQLite")
         print("Records:", len(records))
-        print("Status: SOURCE-DERIVED ANALYTICAL")
+        print("Status: DATABASE-BACKED")
         print("=" * 60)
 
         return records
 
     except Exception as error:
-        print("MINQORA DATA LOAD ERROR:", error)
+        print("MINQORA DATABASE LOAD ERROR:", error)
         return []
+
+
+# ============================================================
+# DATABASE STATUS
+# ============================================================
+
+@app.get("/database/status")
+def database_status():
+    """Return the runtime mining database status for diagnostics/demo."""
+    try:
+        initialize_database()
+        return get_database_status()
+    except Exception as error:
+        raise HTTPException(status_code=500, detail=f"Database error: {error}")
 
 
 # ============================================================
@@ -1694,6 +1612,9 @@ def generate_resource_estimation(question, records):
             f"{format_number(block['estimated_recoverable_tonnage'])} t recoverable "
             f"({block['geometry_basis']})"
         )
+
+    resource_block_summary = "\n".join(block_lines)
+    assumptions_summary = " ".join("• " + item for item in assumptions)
 
     answer = f"""
 ⛏️ PHASE 5A — RESOURCE ESTIMATION FOUNDATION
@@ -4842,15 +4763,15 @@ def resource_risk(mine: str = None, start_year: int = None, end_year: int = None
 
 
 
+
 # ============================================================
-# BRAIN 1 — NATURAL-LANGUAGE GEOLOGICAL INTELLIGENCE
+# BRAIN 1 — SOURCE-DERIVED GEOLOGICAL SEAM INTELLIGENCE
 # ============================================================
 
-
-def load_machhakata_geological_package():
-    """Load the source-derived Machhakata block and its 24 seam records."""
+def load_machhakata_geological_seams():
+    """Load source-derived Machhakata seam-level geological records."""
     if not os.path.isfile(CMPDI_MULTI_MINE_FILE):
-        return None
+        return []
 
     try:
         with open(CMPDI_MULTI_MINE_FILE, "r", encoding="utf-8") as file:
@@ -4858,416 +4779,138 @@ def load_machhakata_geological_package():
 
         for mine in package.get("mines", []):
             if str(mine.get("name", "")).strip().lower() == "machhakata (revised)":
-                return mine
+                seams = mine.get("seams", [])
+                return seams if isinstance(seams, list) else []
     except Exception as exc:
-        print("Machhakata geological package load error:", exc)
+        print("Machhakata geological seam load error:", exc)
 
-    return None
-
-
-def _geo_number(value):
-    try:
-        if value is None or value == "":
-            return None
-        return float(value)
-    except (TypeError, ValueError):
-        return None
+    return []
 
 
-def _geo_seams(mine):
-    rows = []
-    for raw in (mine or {}).get("seams", []):
-        tmin = _geo_number(raw.get("thickness_min_m"))
-        tmax = _geo_number(raw.get("thickness_max_m"))
-        dmin = _geo_number(raw.get("depth_min_m"))
-        dmax = _geo_number(raw.get("depth_max_m"))
-        reserve = _geo_number(raw.get("geological_reserve_mt"))
-
-        rows.append({
-            "seam": str(raw.get("seam", "N/A")),
-            "thickness_min_m": tmin,
-            "thickness_max_m": tmax,
-            "depth_min_m": dmin,
-            "depth_max_m": dmax,
-            "geological_reserve_mt": reserve,
-            "grade": raw.get("grade"),
-            "source": raw.get("source", "Machhakata & Mahanadi Coal Block Summary"),
-        })
-    return rows
-
-
-def _geo_fmt(value, decimals=2):
-    if value is None:
-        return "N/A"
-    if float(value).is_integer() and decimals == 0:
-        return f"{int(value):,}"
-    return f"{float(value):,.{decimals}f}"
-
-
-def _geo_label(row):
-    return row["seam"]
-
-
-def _geo_parse_number(q):
-    match = re.search(r"(?<![a-z])(-?\d+(?:\.\d+)?)\s*(?:m|mt|mtp?a|%)?\b", q)
-    return float(match.group(1)) if match else None
-
-
-def _geo_parse_between(q):
-    # Supports: between 5 and 10, from 5 to 10, 5-10 m
-    patterns = [
-        r"between\s+(-?\d+(?:\.\d+)?)\s+and\s+(-?\d+(?:\.\d+)?)",
-        r"from\s+(-?\d+(?:\.\d+)?)\s+to\s+(-?\d+(?:\.\d+)?)",
-        r"(-?\d+(?:\.\d+)?)\s*(?:-|–|—)\s*(-?\d+(?:\.\d+)?)\s*m",
-    ]
-    for pattern in patterns:
-        match = re.search(pattern, q)
-        if match:
-            return float(match.group(1)), float(match.group(2))
-    return None
-
-
-def _geo_seam_from_question(q, seams):
-    """Resolve an explicitly named seam using token boundaries."""
-    for row in sorted(seams, key=lambda r: len(r["seam"]), reverse=True):
-        name = str(row["seam"]).strip().lower()
-        if not name:
-            continue
-        pattern = r"(?<![a-z0-9])" + re.escape(name) + r"(?![a-z0-9])"
-        if re.search(pattern, q):
-            return row
-    return None
-
-
-def _geo_question_is_relevant(q):
-    terms = [
-        "seam", "seams", "thickness", "depth", "geological", "geology",
-        "reserve", "resource", "coal block", "machhakata", "borehole",
-        "drilling", "prc", "production capacity", "mining method",
-        "exploration grade", "block area", "coalfield", "strike", "dip",
-    ]
-    return any(term in q for term in terms)
-
-
-def answer_comprehensive_machhakata_question(question):
-    """Handle multi-intent Brain 1 questions in one response.
-
-    This runs before the single-property geological router so a question that
-    asks for several insights is not reduced to only the first detected metric.
+def answer_geological_seam_question(question):
     """
-    q = str(question or "").strip().lower()
+    Route seam-level geological questions to the 24 source-derived
+    Machhakata seam records instead of the repeated 1,200-row
+    analytical dataset.
+    """
+    q = question.lower().strip()
 
-    # Require a genuinely multi-part intelligence request.
-    geo_terms = ["thickest", "highest-reserve", "highest reserve", "largest reserve", "deepest", "highest thickness"]
-    ops_terms = ["average ash", "average recovery", "ash", "recovery", "risk", "operational"]
-    multi_intent = sum(bool(re.search(r"\b" + re.escape(t) + r"\b", q)) for t in geo_terms + ops_terms)
-    if multi_intent < 2 or "machhakata" not in q:
+    geological_terms = [
+        "geological", "geology", "seam", "seams",
+        "thickness", "depth", "coal seam",
+        "geological characteristics"
+    ]
+
+    range_terms = [
+        "range", "ranges", "thickness and depth",
+        "thickness", "depth", "characteristics", "profile"
+    ]
+
+    if not any(term in q for term in geological_terms):
         return None
 
-    mine = load_machhakata_geological_package()
-    if not mine:
+    if not any(term in q for term in range_terms):
         return None
 
-    seams = _geo_seams(mine)
+    seams = load_machhakata_geological_seams()
+
     if not seams:
-        return None
-
-    lines = ["Machhakata (Revised) — Comprehensive Brain 1 Analysis", ""]
-
-    # 1. Geological extremes — source-derived 24 seam records.
-    thick = max((r for r in seams if r.get("thickness_max_m") is not None),
-                key=lambda r: float(r["thickness_max_m"]), default=None)
-    reserve = max((r for r in seams if r.get("geological_reserve_mt") is not None),
-                  key=lambda r: float(r["geological_reserve_mt"]), default=None)
-    deep = max((r for r in seams if r.get("depth_max_m") is not None),
-               key=lambda r: float(r["depth_max_m"]), default=None)
-
-    if thick:
-        lines.append(f"• Thickest seam: {thick['seam']} — {_geo_fmt(thick['thickness_max_m'])} m")
-    if reserve:
-        lines.append(f"• Highest-reserve seam: {reserve['seam']} — {_geo_fmt(reserve['geological_reserve_mt'])} MT")
-    if deep:
-        lines.append(f"• Deepest seam: {deep['seam']} — {_geo_fmt(deep['depth_max_m'])} m")
-
-    # 2. Operational statistics — 1,200-row derived analytical dataset.
-    records = get_data()
-    def nums(key, aliases=()):
-        out = []
-        for r in records:
-            value = r.get(key)
-            if value is None:
-                for a in aliases:
-                    value = r.get(a)
-                    if value is not None:
-                        break
-            try:
-                if value is not None and str(value).strip() != "":
-                    out.append(float(value))
-            except (TypeError, ValueError):
-                pass
-        return out
-
-    ash = nums("ash_content", ("ash_percent",))
-    recovery = nums("recovery", ("recovery_percent",))
-    if ash:
-        lines.append(f"• Average ash content: {sum(ash)/len(ash):.2f}% ({len(ash):,} analytical records)")
-    if recovery:
-        lines.append(f"• Average recovery: {sum(recovery)/len(recovery):.2f}% ({len(recovery):,} analytical records)")
-
-    # 3. Risk profile from the available analytical records.
-    risk_counts = {}
-    for r in records:
-        value = str(r.get("risk_level") or "").strip()
-        if value:
-            key = value.title()
-            risk_counts[key] = risk_counts.get(key, 0) + 1
-    if risk_counts:
-        ordered = sorted(risk_counts.items(), key=lambda x: (-x[1], x[0]))
-        risk_text = ", ".join(f"{name}: {count}" for name, count in ordered)
-        lines.append(f"• Risk profile: {risk_text}")
-    else:
-        lines.append("• Risk profile: no explicit risk-level records are available in the analytical dataset.")
-
-    lines.extend([
-        "",
-        "Key planning insights:",
-        f"• Geological screening should consider {thick['seam']} for maximum reported seam thickness and {reserve['seam']} for the largest source-derived seam reserve." if thick and reserve else "• Geological extreme values could not be fully resolved.",
-        f"• {deep['seam']} reaches the greatest reported depth ({_geo_fmt(deep['depth_max_m'])} m), which is relevant to depth-related mine planning." if deep else "• Deepest-seam information is unavailable.",
-        "• Ash, recovery and risk figures are derived analytical/demo records; they should not be presented as independent official CMPDI measurements."
-    ])
-
-    return {
-        "brain": "BRAIN 1",
-        "analysis_type": "COMPREHENSIVE_MINING_INTELLIGENCE",
-        "mine": "Machhakata (Revised)",
-        "records_used": len(seams) + len(records),
-        "answer": "\n".join(lines),
-        "evidence": seams,
-    }
-
-
-def answer_machhakata_geological_question(question):
-    """Answer natural-language geological questions from source-derived data.
-
-    This intentionally uses the 24 seam-level records for geological questions,
-    not the 1,200-row derived analytical dataset. It supports direct lookups,
-    ranges, thresholds, between-ranges, counts, extrema, comparisons and
-    block-level facts.
-    """
-    q = str(question or "").strip().lower()
-    if not q or not _geo_question_is_relevant(q):
-        return None
-
-    mine = load_machhakata_geological_package()
-    if not mine:
         return {
             "brain": "BRAIN 1",
             "analysis_type": "GEOLOGICAL_INTELLIGENCE",
             "mine": "Machhakata (Revised)",
             "records_used": 0,
-            "answer": "Machhakata source-derived geological data could not be loaded.",
-            "evidence": [],
+            "answer": (
+                "No source-derived Machhakata seam data is available. "
+                "Check backend/data/cmpdi/cmpdi_multi_mine.json."
+            ),
+            "evidence": []
         }
 
-    seams = _geo_seams(mine)
-    block = mine.get("block", {})
-    exploration = mine.get("exploration", {})
+    valid = []
 
-    # ------------------------------------------------------------
-    # Block-level direct facts
-    # ------------------------------------------------------------
-    block_facts = [
-        (["prc", "production capacity", "annual capacity", "capacity"], "PRC", block.get("prc_mtpa"), "MTPA"),
-        (["block area", "area of the block", "area"], "Block area", block.get("area_km2"), "km²"),
-        (["geological resource", "total resource", "total geological resource", "geological reserve"], "Geological resource", block.get("geological_resource_mt"), "MT"),
-        (["boreholes", "borehole"], "Boreholes", exploration.get("boreholes"), ""),
-        (["drilling", "drilled"], "Total drilling", exploration.get("drilling_m"), "m"),
+    for seam in seams:
+        try:
+            t_min = float(seam.get("thickness_min_m"))
+            t_max = float(seam.get("thickness_max_m"))
+            d_min = float(seam.get("depth_min_m"))
+            d_max = float(seam.get("depth_max_m"))
+        except (TypeError, ValueError):
+            continue
+
+        valid.append({
+            "seam": seam.get("seam", "N/A"),
+            "thickness_min_m": t_min,
+            "thickness_max_m": t_max,
+            "depth_min_m": d_min,
+            "depth_max_m": d_max,
+            "geological_reserve_mt": seam.get("geological_reserve_mt"),
+            "grade": seam.get("grade"),
+            "source": seam.get(
+                "source",
+                "Machhakata & Mahanadi Coal Block Summary"
+            )
+        })
+
+    valid.sort(
+        key=lambda item: item["thickness_max_m"],
+        reverse=True
+    )
+
+    lines = []
+
+    for item in valid:
+        reserve_text = ""
+
+        if item["geological_reserve_mt"] is not None:
+            try:
+                reserve_text = (
+                    f" | Reserve: "
+                    f"{float(item['geological_reserve_mt']):,.2f} MT"
+                )
+            except (TypeError, ValueError):
+                pass
+
+        lines.append(
+            f"• {item['seam']}\n"
+            f"  Thickness: {item['thickness_min_m']:.2f}–"
+            f"{item['thickness_max_m']:.2f} m\n"
+            f"  Depth: {item['depth_min_m']:.2f}–"
+            f"{item['depth_max_m']:.2f} m\n"
+            f"  Grade: {item['grade'] or 'N/A'}{reserve_text}"
+        )
+
+    answer = (
+        "🪨 GEOLOGICAL INTELLIGENCE\n\n"
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        "Mine: Machhakata (Revised)\n"
+        f"Seams analyzed: {len(valid)}\n\n"
+        "SEAM-LEVEL GEOLOGICAL CHARACTERISTICS\n\n"
+        + "\n\n".join(lines)
+        + "\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        "DATA SOURCE\n\n"
+        "Machhakata & Mahanadi Coal Block Summary\n"
+        "Source-derived geological report data\n\n"
+        "Thickness and depth ranges are taken from the "
+        "source-derived seam records. MINQORA does not "
+        "generate new geological measurements here."
+    )
+
+    evidence = [
+        {
+            "mine": "Machhakata (Revised)",
+            **item
+        }
+        for item in valid
     ]
-    if not any(word in q for word in ["seam", "seams", "thickness", "depth", "which", "highest", "lowest", "thickest", "deepest", "between", "above", "below", "greater", "less"]):
-        for keywords, label, value, unit in block_facts:
-            if any(k in q for k in keywords):
-                return {
-                    "brain": "BRAIN 1",
-                    "analysis_type": "GEOLOGICAL_INTELLIGENCE",
-                    "mine": "Machhakata (Revised)",
-                    "records_used": 1,
-                    "answer": f"{label}: {_geo_fmt(value)} {unit}".strip(),
-                    "evidence": [{"mine": "Machhakata (Revised)", "field": label, "value": value}],
-                }
 
-    if "exploration grade" in q:
-        value = exploration.get("exploration_grade")
-        return _geo_result(f"Exploration grade: {value or 'N/A'}", [exploration], 1)
-    if "mining method" in q or "method of mining" in q:
-        value = block.get("mining_method")
-        return _geo_result(f"Mining method: {value or 'N/A'}", [block], 1)
-    if "coalfield" in q:
-        return _geo_result(f"Coalfield: {block.get('coalfield', 'N/A')}", [block], 1)
-    if "state" in q or "which state" in q:
-        return _geo_result(f"State: {block.get('state', 'N/A')}", [block], 1)
-    if "strike" in q:
-        return _geo_result(f"Strike: {exploration.get('strike', 'N/A')}", [exploration], 1)
-    if "dip" in q:
-        return _geo_result(f"Dip: {exploration.get('dip', 'N/A')}", [exploration], 1)
-    if "how many seams" in q or "number of seams" in q or "count of seams" in q:
-        return _geo_result(f"Machhakata has {len(seams)} source-derived seam records.", seams, len(seams))
-
-    # ------------------------------------------------------------
-    # Seam-level property selection
-    # ------------------------------------------------------------
-    is_thickness = "thickness" in q or "thick" in q
-    is_depth = "depth" in q or "deep" in q
-    is_reserve = "reserve" in q or "resource" in q
-
-    if is_thickness:
-        prop_min, prop_max, unit, prop_name = "thickness_min_m", "thickness_max_m", "m", "thickness"
-    elif is_depth:
-        prop_min, prop_max, unit, prop_name = "depth_min_m", "depth_max_m", "m", "depth"
-    elif is_reserve:
-        prop_min = prop_max = "geological_reserve_mt"
-        unit, prop_name = "MT", "geological reserve"
-    else:
-        prop_min = prop_max = None
-        unit, prop_name = "", "geological characteristic"
-
-    # Direct named-seam question.
-    named = _geo_seam_from_question(q, seams)
-    if named and prop_max:
-        if prop_min == prop_max:
-            answer = f"Seam {named['seam']} geological reserve: {_geo_fmt(named[prop_max])} {unit}"
-        elif "minimum" in q or "minimum value" in q or "min " in q or "lowest" in q:
-            answer = f"Seam {named['seam']} minimum {prop_name}: {_geo_fmt(named[prop_min])} {unit}"
-        elif "maximum" in q or "maximum value" in q or "max " in q or "highest" in q:
-            answer = f"Seam {named['seam']} maximum {prop_name}: {_geo_fmt(named[prop_max])} {unit}"
-        else:
-            answer = (
-                f"Seam {named['seam']} {prop_name} range: "
-                f"{_geo_fmt(named[prop_min])}–{_geo_fmt(named[prop_max])} {unit}"
-            )
-        return _geo_result(answer, [named], 1)
-
-    # Aggregate reserve questions. The sum is explicitly a seam-table
-    # aggregation and is not substituted for the current published block resource.
-    if is_reserve and any(x in q for x in ["total", "sum", "combined", "all seams"]):
-        values = [r["geological_reserve_mt"] for r in seams if r.get("geological_reserve_mt") is not None]
-        if values:
-            total = sum(values)
-            answer = (
-                f"Source-derived seam reserve total: {_geo_fmt(total)} MT across {len(values)} seams. "
-                "This is a seam-table aggregation, not a new official block-resource estimate."
-            )
-            return _geo_result(answer, seams, len(values))
-
-    # ------------------------------------------------------------
-    # Aggregate range across all seams.
-    # ------------------------------------------------------------
-    if ("range" in q or "ranges" in q) and prop_max:
-        mins = [_geo_number(r.get(prop_min)) for r in seams if _geo_number(r.get(prop_min)) is not None]
-        maxs = [_geo_number(r.get(prop_max)) for r in seams if _geo_number(r.get(prop_max)) is not None]
-        if mins and maxs:
-            answer = f"Across the 24 seams, {prop_name} ranges from {_geo_fmt(min(mins))} to {_geo_fmt(max(maxs))} {unit}."
-            return _geo_result(answer, seams, len(seams))
-
-    # ------------------------------------------------------------
-    # Threshold filters: above/below/at least/at most.
-    # ------------------------------------------------------------
-    if prop_max:
-        threshold = _geo_parse_number(q)
-        if threshold is not None:
-            # "minimum thickness/depth" uses the lower bound; otherwise
-            # threshold questions such as "maximum thickness above 10 m"
-            # use the upper bound.
-            threshold_field = prop_min if (prop_min != prop_max and (
-                "minimum thickness" in q or "minimum depth" in q or
-                "min thickness" in q or "min depth" in q
-            )) else prop_max
-            threshold_label = "minimum" if threshold_field == prop_min and prop_min != prop_max else "maximum"
-            op = None
-            if any(x in q for x in ["above", "greater than", "more than", "over", "exceed", "exceeds"]):
-                op = "gt"
-            elif any(x in q for x in ["at least", "minimum of", "min of"]):
-                op = "ge"
-            elif any(x in q for x in ["below", "less than", "under"]):
-                op = "lt"
-            elif any(x in q for x in ["at most", "maximum of", "max of"]):
-                op = "le"
-
-            if op:
-                value_getter = lambda r: r.get(threshold_field)
-                tests = {"gt": lambda v: v > threshold, "ge": lambda v: v >= threshold,
-                         "lt": lambda v: v < threshold, "le": lambda v: v <= threshold}
-                matched = [r for r in seams if value_getter(r) is not None and tests[op](value_getter(r))]
-                matched.sort(key=lambda r: value_getter(r), reverse=True)
-                relation = {"gt": ">", "ge": "≥", "lt": "<", "le": "≤"}[op]
-                if matched:
-                    names = ", ".join(f"{r['seam']} ({_geo_fmt(value_getter(r))} {unit})" for r in matched)
-                    answer = f"{len(matched)} seams have {prop_name} {threshold_label} {relation} {threshold:g} {unit}: {names}."
-                else:
-                    answer = f"No seams have {prop_name} {threshold_label} {relation} {threshold:g} {unit}."
-                return _geo_result(answer, matched, len(matched))
-
-    # Between-range filter.
-    if prop_max and ("between" in q or "from" in q):
-        bounds = _geo_parse_between(q)
-        if bounds:
-            lo, hi = sorted(bounds)
-            matched = [
-                r for r in seams
-                if r.get(prop_max) is not None and lo <= r[prop_max] <= hi
-            ]
-            matched.sort(key=lambda r: r[prop_max], reverse=True)
-            if matched:
-                names = ", ".join(f"{r['seam']} ({_geo_fmt(r[prop_max])} {unit})" for r in matched)
-                answer = f"{len(matched)} seams have {prop_name} maximum between {lo:g} and {hi:g} {unit}: {names}."
-            else:
-                answer = f"No seams have {prop_name} maximum between {lo:g} and {hi:g} {unit}."
-            return _geo_result(answer, matched, len(matched))
-
-    # ------------------------------------------------------------
-    # Extremes: highest/lowest/thickest/deepest/largest/smallest.
-    # ------------------------------------------------------------
-    if prop_max:
-        want_low = any(x in q for x in ["lowest", "smallest", "least", "minimum", "shallowest", "thinnest"])
-        want_high = any(x in q for x in ["highest", "largest", "maximum", "greatest", "deepest", "thickest"])
-        if want_low or want_high:
-            field = prop_min if (is_thickness and want_low) or (is_depth and want_low) else prop_max
-            valid = [r for r in seams if r.get(field) is not None]
-            if valid:
-                target = min(valid, key=lambda r: r[field]) if want_low else max(valid, key=lambda r: r[field])
-                answer = f"{target['seam']} has the {'lowest' if want_low else 'highest'} {prop_name}: {_geo_fmt(target[field])} {unit}."
-                return _geo_result(answer, [target], 1)
-
-    # Compare two explicitly named seams.
-    if "compare" in q and prop_max:
-        named_rows = [r for r in seams if r["seam"].lower() in q]
-        if len(named_rows) >= 2:
-            named_rows = named_rows[:2]
-            a, b = named_rows
-            if prop_min == prop_max:
-                answer = f"{a['seam']}: {_geo_fmt(a[prop_max])} {unit}; {b['seam']}: {_geo_fmt(b[prop_max])} {unit}."
-            else:
-                answer = (f"{a['seam']}: {_geo_fmt(a[prop_min])}–{_geo_fmt(a[prop_max])} {unit}; "
-                          f"{b['seam']}: {_geo_fmt(b[prop_min])}–{_geo_fmt(b[prop_max])} {unit}.")
-            return _geo_result(answer, named_rows, len(named_rows))
-
-    # Generic seam listing / characteristics request.
-    if "which seams" in q or "list seams" in q or "show seams" in q or "characteristics" in q:
-        if prop_max:
-            ordered = sorted(seams, key=lambda r: r[prop_max] if r[prop_max] is not None else -float("inf"), reverse=True)
-            lines = [f"{r['seam']} ({_geo_fmt(r[prop_max])} {unit})" for r in ordered]
-            return _geo_result(f"{len(ordered)} seams: " + ", ".join(lines) + ".", ordered, len(ordered))
-
-    return None
-
-
-def _geo_result(answer, evidence, records_used):
     return {
         "brain": "BRAIN 1",
         "analysis_type": "GEOLOGICAL_INTELLIGENCE",
         "mine": "Machhakata (Revised)",
-        "records_used": records_used,
+        "records_used": len(valid),
         "answer": answer,
-        "evidence": evidence,
+        "evidence": evidence
     }
 
 
@@ -5277,21 +4920,27 @@ def _geo_result(answer, evidence, records_used):
 
 @app.post("/brain1/ask")
 def brain1_ask(request: AskRequest):
-    """Natural-language Brain 1 entry point."""
+    """
+    Unified Brain 1 entry point.
+
+    Geological seam questions use the source-derived Machhakata
+    seam engine first. All other questions use the existing
+    Brain 1 intelligence engine.
+    """
     question = request.question.strip()
+
     if not question:
-        raise HTTPException(status_code=400, detail="Question cannot be empty.")
+        raise HTTPException(
+            status_code=400,
+            detail="Question cannot be empty."
+        )
 
-    comprehensive_result = answer_comprehensive_machhakata_question(question)
-    if comprehensive_result is not None:
-        return comprehensive_result
+    geological_result = answer_geological_seam_question(question)
 
-    geological_result = answer_machhakata_geological_question(question)
     if geological_result is not None:
         return geological_result
 
     return ask_question(request)
-
 
 
 # ============================================================
