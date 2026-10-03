@@ -5,9 +5,40 @@ import sqlite3
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATABASE_PATH = os.path.join(BASE_DIR, "minqora.db")
 CSV_PATH = os.path.join(BASE_DIR, "data", "minqora_unified_1200.csv")
-TABLE_NAME = "mining_records"
 
 _db = None
+
+COLUMNS = [
+    "record_id",
+    "date",
+    "year",
+    "month",
+    "mine",
+    "mine_name",
+    "state",
+    "location",
+    "seam",
+    "thickness_m",
+    "coal_thickness_m",
+    "depth_m",
+    "production_tonnes",
+    "recovery",
+    "recovery_percent",
+    "ash_content",
+    "ash_percent",
+    "moisture",
+    "moisture_percent",
+    "calorific_value",
+    "geological_reserve_mt",
+    "reserve_mt",
+    "grade",
+    "exploration_grade",
+    "risk_level",
+    "source",
+    "source_url",
+    "source_status",
+    "record_type"
+]
 
 
 def get_connection():
@@ -84,6 +115,7 @@ def create_table(conn):
 
 
 def seed_database(conn):
+
     if not os.path.exists(CSV_PATH):
         raise RuntimeError(
             f"Mining dataset not found: {CSV_PATH}"
@@ -96,50 +128,27 @@ def seed_database(conn):
     ) as f:
         rows = list(csv.DictReader(f))
 
-    if not rows:
-        raise RuntimeError("Mining CSV contains no records")
+    if len(rows) != 1200:
+        raise RuntimeError(
+            f"Expected 1200 CSV records, found {len(rows)}"
+        )
 
     conn.execute("DELETE FROM mining_records")
 
+    placeholders = ",".join(["?"] * len(COLUMNS))
+
+    sql = f"""
+        INSERT INTO mining_records (
+            {",".join(COLUMNS)}
+        )
+        VALUES (
+            {placeholders}
+        )
+    """
+
     for row in rows:
-        conn.execute("""
-            INSERT INTO mining_records (
-                record_id,
-                date,
-                year,
-                month,
-                mine,
-                mine_name,
-                state,
-                location,
-                seam,
-                thickness_m,
-                coal_thickness_m,
-                depth_m,
-                production_tonnes,
-                recovery,
-                recovery_percent,
-                ash_content,
-                ash_percent,
-                moisture,
-                moisture_percent,
-                calorific_value,
-                geological_reserve_mt,
-                reserve_mt,
-                grade,
-                exploration_grade,
-                risk_level,
-                source,
-                source_url,
-                source_status,
-                record_type
-            )
-            VALUES (
-                ?,?,?,?,?,?,?,?,?,?,
-                ?,?,?,?,?,?,?,?,?,?,
-                ?,?,?,?,?,?,?,?,?,?
-            )
-        """, (
+
+        values = [
             row.get("record_id"),
             row.get("date"),
             int(row["year"]) if row.get("year") else None,
@@ -169,7 +178,15 @@ def seed_database(conn):
             row.get("source_url"),
             row.get("source_status"),
             "cmpdi_derived_analytical"
-        ))
+        ]
+
+        if len(values) != len(COLUMNS):
+            raise RuntimeError(
+                f"Column/value mismatch: {len(COLUMNS)} columns, "
+                f"{len(values)} values"
+            )
+
+        conn.execute(sql, values)
 
     conn.commit()
 
@@ -182,6 +199,7 @@ def seed_database(conn):
 
 
 def initialize_database():
+
     conn = get_connection()
 
     create_table(conn)
@@ -190,8 +208,6 @@ def initialize_database():
         "SELECT COUNT(*) FROM mining_records"
     ).fetchone()[0]
 
-    # Render may start with a completely empty filesystem/database.
-    # Seed automatically from the Git-tracked 1,200-row CSV.
     if total != 1200:
         seed_database(conn)
 
@@ -204,12 +220,17 @@ def initialize_database():
             f"Database contains {total} records; expected 1200"
         )
 
-    print("MINQORA PERSISTENT DATABASE READY:", total, "records")
+    print(
+        "MINQORA PERSISTENT DATABASE READY:",
+        total,
+        "records"
+    )
 
     return total
 
 
 def _record(row):
+
     data = dict(row)
 
     data["mine"] = data.get("mine_name")
@@ -224,6 +245,7 @@ def _record(row):
 
 
 def fetch_mining_records(limit=None):
+
     initialize_database()
 
     conn = get_connection()
@@ -242,6 +264,7 @@ def fetch_mining_records(limit=None):
 
 
 def get_database_status():
+
     initialize_database()
 
     conn = get_connection()
@@ -263,7 +286,7 @@ def get_database_status():
         "status": "online",
         "database_file": "minqora.db",
         "database_path": DATABASE_PATH,
-        "table": TABLE_NAME,
+        "table": "mining_records",
         "total_records": total,
         "unique_mines": mines,
         "unique_seams": seams,
