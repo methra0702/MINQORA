@@ -1383,17 +1383,27 @@ Rules:
 
 
 def format_user_facing_answer(answer: str) -> str:
-    """Normalize model markdown into clean plain text for the React chat UI."""
+    """Normalize Gemini output into clean, scannable plain text."""
     if not answer:
         return answer
 
-    text = answer.replace("\\r\\n", "\\n").replace("\\r", "\\n")
+    text = answer.replace("\r\n", "\n").replace("\r", "\n")
     text = text.replace("**", "").replace("__", "")
 
-    text = re.sub(r"^#{1,6}\\s*", "", text, flags=re.MULTILINE)
-    text = re.sub(r"^[ \\t]*[-•]\\s+", "• ", text, flags=re.MULTILINE)
-    text = re.sub(r"^[ \\t]*\\*\\s+", "• ", text, flags=re.MULTILINE)
-    text = re.sub(r"\\n[ \\t]*\\n[ \\t]*\\n+", "\\n\\n", text)
+    # Remove Markdown heading markers.
+    text = re.sub(r"^#{1,6}\s*", "", text, flags=re.MULTILINE)
+
+    # Normalize bullets.
+    text = re.sub(r"^[ \t]*[-•]\s+", "• ", text, flags=re.MULTILINE)
+    text = re.sub(r"^[ \t]*\*\s+", "• ", text, flags=re.MULTILINE)
+
+    # Gemini sometimes returns numbered sections in one paragraph, e.g.
+    # "1. Location ... 2. Exploration ... 3. Structure ...".
+    # Put each numbered section on its own paragraph for the dashboard.
+    text = re.sub(r"\s+(?=[1-9]\d*\.\s+)", "\n\n", text)
+
+    # Collapse excessive blank lines.
+    text = re.sub(r"\n[ \t]*\n[ \t]*\n+", "\n\n", text)
 
     return text.strip()
 
