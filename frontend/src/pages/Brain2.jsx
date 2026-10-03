@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import "../App.css";
 
-const BRAIN2_API = "http://127.0.0.1:8001";
+const BRAIN2_API = "https://minqora-brain2.onrender.com";
 
 function Brain2() {
   const [question, setQuestion] = useState("");
