@@ -15,6 +15,7 @@ import { WorkspaceProvider } from "./MINQORAWorkspaceContext";
 import MINQORAWorkspaceBar from "./MINQORAWorkspaceBar";
 
 const API_URL = "https://minqora-brain1.onrender.com";
+const UNIFIED_API = "https://minqora-unified-data.onrender.com";
 
 // ============================================================
 // BRAIN PHASES
@@ -237,7 +238,7 @@ function AppContent() {
   const loadStatistics = async () => {
     try {
       const response = await fetch(
-        `${API_URL}/mining-data/statistics/summary`
+        `${UNIFIED_API}/mining-data/statistics/summary`
       );
 
       if (!response.ok) return;
