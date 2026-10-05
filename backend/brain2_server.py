@@ -222,7 +222,7 @@ BRAIN1_API = os.getenv("BRAIN1_API", "https://minqora-brain1.onrender.com").rstr
 
 
 
-UNIFIED_API = os.getenv("UNIFIED_API", "http://127.0.0.1:8003").rstrip("/")
+UNIFIED_API = os.getenv("UNIFIED_API", "https://minqora-unified-data.onrender.com").rstrip("/")
 
 
 

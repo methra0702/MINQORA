@@ -1,6 +1,6 @@
-const UNIFIED_API = "http://127.0.0.1:8003";
-const BRAIN1_API = "http://127.0.0.1:8000";
-const CMPDI_API = "http://127.0.0.1:8002";
+const UNIFIED_API = "https://minqora-unified-data.onrender.com";
+const BRAIN1_API = "https://minqora-brain1.onrender.com";
+const CMPDI_API = "https://minqora-cmpdi.onrender.com";
 
 async function fetchJSON(url, options = {}) {
   const response = await fetch(url, options);

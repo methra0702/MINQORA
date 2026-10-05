@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 
-const API_URL = "http://127.0.0.1:8000";
+const API_URL = "https://minqora-brain1.onrender.com";
 
 const ALIASES = {
   latitude: ["latitude", "lat", "gps_latitude", "gps_lat", "y_lat"],

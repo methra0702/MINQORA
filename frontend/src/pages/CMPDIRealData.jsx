@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 
-const CMPDI_API = "http://127.0.0.1:8002";
+const CMPDI_API = "https://minqora-cmpdi.onrender.com";
 
 // Safely convert source-traceable CMPDI values into something React can render.
 // Some official fields are stored as { value, source } objects.

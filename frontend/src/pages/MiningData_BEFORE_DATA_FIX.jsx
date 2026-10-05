@@ -1,6 +1,6 @@
-﻿import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
-const DATA_API = "http://127.0.0.1:8000";
+const DATA_API = "https://minqora-brain1.onrender.com";
 
 const firstValue = (...values) => {
   for (const value of values) {
